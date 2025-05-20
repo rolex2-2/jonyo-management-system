@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parent Dashboard - Jonyo Junior Secondary School</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        body {
+            background-color: #f0f8ff;
+            font-family: Arial, sans-serif;
+        }
+        .navbar, .footer {
+            background-color: #343a40;
+            color: #ffffff;
+        }
+        .navbar-brand, .nav-link, .footer a {
+            color: #ffffff !important;
+        }
+        .container {
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .footer {
+            text-align: center;
+            padding: 15px 0;
+            position: relative;
+            bottom: 0;
+            width: 100%;
+        }
+        .section-title {
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 5px;
+            margin-bottom: 15px;
+        }
+        .school-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .table th, .table td {
+            vertical-align: middle;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('parent_dashboard') }}">Jonyo Junior Secondary School</a>
+            <div class="collapse navbar-collapse">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('logout') }}">Logout</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    <div class="container">
+        <h1 class="school-header">Jonyo Junior Secondary School</h1>
+        <h2 class="text-center">Parent Dashboard</h2>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'danger' else 'success' if category == 'success' else 'warning' }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        <h3 class="section-title">Current Term Information</h3>
+        {% if term_info %}
+            <p><strong>Term:</strong> {{ term_info[0] }}</p>
+            <p><strong>Start Date:</strong> {{ term_info[1] }}</p>
+            <p><strong>End Date:</strong> {{ term_info[2] }}</p>
+            <p><strong>Principal:</strong> {{ term_info[3] }}</p>
+        {% else %}
+            <p class="text-warning">No term information available.</p>
+        {% endif %}
+        
+        <h3 class="section-title">Select Learner</h3>
+        {% if learners %}
+            <form method="POST" action="{{ url_for('parent_dashboard') }}">
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <select name="learner_admission" class="form-select" onchange="this.form.submit()">
+                            {% for learner in learners %}
+                                <option value="{{ learner[0] }}" {{ 'selected' if learner[0] == selected_admission }}>{{ learner[0] }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </form>
+        {% else %}
+            <p class="text-warning">No learners linked to this account.</p>
+        {% endif %}
+        
+        {% if selected_admission %}
+            <h3 class="section-title">Report Cards for {{ selected_admission }}</h3>
+            {% if report_cards %}
+                <table class="table table-striped table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Term</th>
+                            <th>Year</th>
+                            <th>Exam Type</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for card in report_cards %}
+                            <tr>
+                                <td>{{ card[0] }}</td>
+                                <td>{{ card[1] }}</td>
+                                <td>{{ card[2] }}</td>
+                                <td>
+                                    <a href="{{ url_for('report_card', admission_no=selected_admission, term=card[0], year=card[1], exam_type=card[2]) }}" 
+                                       class="btn btn-primary btn-sm">View Report Card</a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p class="text-warning">No report cards available.</p>
+            {% endif %}
+            
+            <h3 class="section-title">Fee Statements for {{ selected_admission }}</h3>
+            {% if fee_statements %}
+                <table class="table table-striped table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Term</th>
+                            <th>Year</th>
+                            <th>Total Fee</th>
+                            <th>Amount Paid</th>
+                            <th>Balance</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for fee in fee_statements %}
+                            <tr>
+                                <td>{{ fee[3] }}</td>
+                                <td>{{ fee[4] }}</td>
+                                <td>{{ fee[0] }}</td>
+                                <td>{{ fee[1] }}</td>
+                                <td>{{ fee[2] }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p class="text-warning">No fee statements available.</p>
+            {% endif %}
+            
+            <h3 class="section-title">Notes for {{ selected_admission }}</h3>
+            {% if notes %}
+                <table class="table table-striped table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Learning Area</th>
+                            <th>File</th>
+                            <th>Upload Date</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for note in notes %}
+                            <tr>
+                                <td>{{ note[2] }}</td>
+                                <td>{{ note[1].split('/')[-1] }}</td>
+                                <td>{{ note[3] }}</td>
+                                <td>
+                                    <a href="{{ url_for('download_note', note_id=note[0]) }}" class="btn btn-primary btn-sm">Download</a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p class="text-warning">No notes available.</p>
+            {% endif %}
+        {% endif %}
+        
+        <h3 class="section-title">Messages</h3>
+        {% if messages %}
+            <table class="table table-striped table-bordered">
+                <thead>
+                    <tr>
+                        <th>Sender</th>
+                        <th>Message</th>
+                        <th>Sent At</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for message in messages %}
+                        <tr>
+                            <td>{{ message[2] }}</td>
+                            <td>{{ message[0] }}</td>
+                            <td>{{ message[1] }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="text-warning">No messages available.</p>
+        {% endif %}
+    </div>
+    <footer class="footer">
+        <p>© {{ current_year }} Jonyo Junior Secondary School. All rights reserved.<br>
+        Programmed by Mr. Obonga Rolex Oshia. Call: 0114745401 | Email: <a href="mailto:rolexoshia@gmail.com">rolexoshia@gmail.com</a></p>
+    </footer>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

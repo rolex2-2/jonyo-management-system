@@ -1,0 +1,64 @@
+```html
+{% extends "base.html" %}
+
+{% block title %}Preview Fee Statement{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm">
+    <div class="card-header bg-primary text-white">
+        <h2 class="mb-0">Preview Fee Statement</h2>
+    </div>
+    <div class="card-body">
+        <!-- Flash messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <h3 class="mt-4">Student Details</h3>
+        <p><strong>Name:</strong> {{ learner[0] }}</p>
+        <p><strong>Admission No:</strong> {{ learner[1] }}</p>
+        <p><strong>Grade:</strong> {{ learner[2] }}</p>
+        <p><strong>Generated on:</strong> {{ "May 16, 2025, 03:31 AM EAT" }}</p> <!-- Replace with dynamic timestamp if using the alternative -->
+
+        <h3 class="mt-4">Fee Statements</h3>
+        {% if fee_statements %}
+            <table class="table table-bordered table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>Term</th>
+                        <th>Year</th>
+                        <th>Total Fee</th>
+                        <th>Amount Paid</th>
+                        <th>Balance</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for fs in fee_statements %}
+                        <tr>
+                            <td>{{ fs[3] }}</td>
+                            <td>{{ fs[4] }}</td>
+                            <td>{{ fs[0] }}</td>
+                            <td>{{ fs[1] }}</td>
+                            <td>{{ fs[2] }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>No fee statements available.</p>
+        {% endif %}
+
+        <div class="mt-4">
+            <a href="{{ url_for('download_fee_statement', admission_no=learner[1]) }}" class="btn btn-success me-2">Download Statement</a>
+            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

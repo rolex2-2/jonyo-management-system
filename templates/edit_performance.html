@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Performance Levels - Jonyo Junior Secondary School</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        body {
+            background-color: #f0f8ff;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .section-title {
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 5px;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2 class="text-center">Edit Performance Levels</h2>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'danger' else 'success' }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Subject Performance Levels -->
+        <h3 class="section-title">Subject Performance Levels</h3>
+        <h5>Add New Subject Performance Level</h5>
+        <form method="POST">
+            <input type="hidden" name="action" value="add_subject">
+            <div class="row mb-3">
+                <div class="col-md-2">
+                    <label for="min_mark" class="form-label">Min Mark</label>
+                    <input type="number" class="form-control" id="min_mark" name="min_mark" required>
+                </div>
+                <div class="col-md-2">
+                    <label for="max_mark" class="form-label">Max Mark</label>
+                    <input type="number" class="form-control" id="max_mark" name="max_mark" required>
+                </div>
+                <div class="col-md-2">
+                    <label for="level" class="form-label">Level</label>
+                    <input type="text" class="form-control" id="level" name="level" required>
+                </div>
+                <div class="col-md-2">
+                    <label for="points" class="form-label">Points</label>
+                    <input type="number" step="0.1" class="form-control" id="points" name="points" required>
+                </div>
+                <div class="col-md-4">
+                    <label for="comment" class="form-label">Comment</label>
+                    <input type="text" class="form-control" id="comment" name="comment" required>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Add Subject Level</button>
+        </form>
+
+        <h5 class="mt-4">Existing Subject Performance Levels</h5>
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Min Mark</th>
+                    <th>Max Mark</th>
+                    <th>Level</th>
+                    <th>Points</th>
+                    <th>Comment</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for level in performance_levels %}
+                    <tr>
+                        <form method="POST">
+                            <input type="hidden" name="action" value="update_subject">
+                            <input type="hidden" name="level_id" value="{{ level[0] }}">
+                            <td><input type="number" name="min_mark" value="{{ level[1] }}" class="form-control" required></td>
+                            <td><input type="number" name="max_mark" value="{{ level[2] }}" class="form-control" required></td>
+                            <td>{{ level[3] }}</td>
+                            <td><input type="number" step="0.1" name="points" value="{{ level[4] }}" class="form-control" required></td>
+                            <td><input type="text" name="comment" value="{{ level[5] }}" class="form-control" required></td>
+                            <td>
+                                <button type="submit" class="btn btn-success btn-sm">Update</button>
+                                <button type="submit" formaction="{{ url_for('edit_performance') }}" formmethod="POST" name="action" value="delete_subject" class="btn btn-danger btn-sm">Delete</button>
+                            </td>
+                        </form>
+                    </tr>
+                {% else %}
+                    <tr><td colspan="6">No subject performance levels defined.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- Total Marks Performance Levels -->
+        <h3 class="section-title mt-5">Total Marks Performance Levels</h3>
+        <h5>Add New Total Marks Performance Level</h5>
+        <form method="POST">
+            <input type="hidden" name="action" value="add_total">
+            <div class="row mb-3">
+                <div class="col-md-2">
+                    <label for="min_total_marks" class="form-label">Min Total Marks</label>
+                    <input type="number" class="form-control" id="min_total_marks" name="min_total_marks" required>
+                </div>
+                <div class="col-md-2">
+                    <label for="max_total_marks" class="form-label">Max Total Marks</label>
+                    <input type="number" class="form-control" id="max_total_marks" name="max_total_marks" required>
+                </div>
+                <div class="col-md-2">
+                    <label for="grade" class="form-label">Grade</label>
+                    <input type="text" class="form-control" id="grade" name="grade" required>
+                </div>
+                <div class="col-md-2">
+                    <label for="points_total" class="form-label">Points</label>
+                    <input type="number" step="0.1" class="form-control" id="points_total" name="points" required>
+                </div>
+                <div class="col-md-4">
+                    <label for="comment_total" class="form-label">Comment</label>
+                    <input type="text" class="form-control" id="comment_total" name="comment" required>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Add Total Marks Level</button>
+        </form>
+
+        <h5 class="mt-4">Existing Total Marks Performance Levels</h5>
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Min Total Marks</th>
+                    <th>Max Total Marks</th>
+                    <th>Grade</th>
+                    <th>Points</th>
+                    <th>Comment</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for level in total_marks_performance_levels %}
+                    <tr>
+                        <form method="POST">
+                            <input type="hidden" name="action" value="update_total">
+                            <input type="hidden" name="total_id" value="{{ level[0] }}">
+                            <td><input type="number" name="min_total_marks" value="{{ level[1] }}" class="form-control" required></td>
+                            <td><input type="number" name="max_total_marks" value="{{ level[2] }}" class="form-control" required></td>
+                            <td>{{ level[3] }}</td>
+                            <td><input type="number" step="0.1" name="points" value="{{ level[4] }}" class="form-control" required></td>
+                            <td><input type="text" name="comment" value="{{ level[5] }}" class="form-control" required></td>
+                            <td>
+                                <button type="submit" class="btn btn-success btn-sm">Update</button>
+                                <button type="submit" formaction="{{ url_for('edit_performance') }}" formmethod="POST" name="action" value="delete_total" class="btn btn-danger btn-sm">Delete</button>
+                            </td>
+                        </form>
+                    </tr>
+                {% else %}
+                    <tr><td colspan="6">No total marks performance levels defined.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

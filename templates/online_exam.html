@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Online Exam - Jonyo Junior Secondary School</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
+    <style>
+        body {
+            background-color: #f0f8ff;
+            font-family: Arial, sans-serif;
+        }
+        .navbar, .footer {
+            background-color: #343a40;
+            color: #ffffff;
+        }
+        .navbar-brand, .nav-link, .footer a {
+            color: #ffffff !important;
+        }
+        .container {
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            max-width: 1000px;
+        }
+        .footer {
+            text-align: center;
+            padding: 15px 0;
+            position: relative;
+            bottom: 0;
+            width: 100%;
+        }
+        .school-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .table thead {
+            background-color: #6c757d;
+            color: #ffffff;
+        }
+        .table tbody {
+            background-color: #f5f5dc;
+        }
+        .table th, .table td {
+            text-align: center;
+            vertical-align: middle;
+        }
+        .table-responsive .exam-name {
+            white-space: normal;
+            word-wrap: break-word;
+            max-width: 200px;
+        }
+        .table th, .table td {
+            min-width: 80px;
+        }
+        .alert-container {
+            position: relative;
+            z-index: 1000;
+            aria-live: "polite";
+        }
+        .alert {
+            animation: fadeOut 10s forwards;
+        }
+        @keyframes fadeOut {
+            0% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { opacity: 0; display: none; }
+        }
+        .flatpickr-input {
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"><path fill="%23333" d="M20 3h-1V1h-2v2H7V1H5v2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 18H4V8h16v13z"/></svg>') no-repeat right 0.75rem center;
+            background-size: 16px;
+        }
+        .invalid-feedback {
+            display: none;
+            color: #dc3545;
+            font-size: 0.875em;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg" aria-label="Main navigation">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('learner_dashboard') }}">Jonyo Junior Secondary School</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" 
+                    aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('logout') }}">Logout</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    <div class="container">
+        <h1 class="school-header">Jonyo Junior Secondary School</h1>
+        <h2 class="text-center">Online Exam Management</h2>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="alert-container">
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'danger' if category == 'danger' else 'success' if category == 'success' else 'info' if category == 'info' else 'warning' }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% if role in ['admin', 'teacher'] %}
+            <section aria-labelledby="create-exam-heading">
+                <h3 class="mt-4" id="create-exam-heading">Create New Exam</h3>
+                <form method="POST" enctype="multipart/form-data" aria-labelledby="create-exam-heading">
+                    {{ form.hidden_tag() }}
+                    <div class="mb-3">
+                        <label for="{{ form.grade.id }}" class="form-label">Grade</label>
+                        {{ form.grade(class="form-select", aria_describedby="gradeHelp") }}
+                        <small id="gradeHelp" class="form-text text-muted">Select the grade for the exam.</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ form.learning_area.id }}" class="form-label">Learning Area</label>
+                        {{ form.learning_area(class="form-select", aria_describedby="learningAreaHelp") }}
+                        <small id="learningAreaHelp" class="form-text text-muted">Select the subject for the exam.</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ form.exam_name.id }}" class="form-label">Exam Name</label>
+                        {{ form.exam_name(class="form-control", aria_describedby="examNameHelp") }}
+                        <small id="examNameHelp" class="form-text text-muted">Enter a name for the exam (e.g., Mid Term 2025).</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ form.file.id }}" class="form-label">Exam File (Optional)</label>
+                        {{ form.file(class="form-control", aria_describedby="fileHelp") }}
+                        <small id="fileHelp" class="form-text text-muted">Upload a PDF, DOC, DOCX, or TXT file if not online.</small>
+                    </div>
+                    <div class="mb-3 position-relative">
+                        <label for="{{ form.start_time.id }}" class="form-label">Start Time (YYYY-MM-DD HH:MM:SS)</label>
+                        {{ form.start_time(class="form-control datetimepicker", placeholder="2025-05-18 09:00:00", aria_describedby="startTimeHelp") }}
+                        <small id="startTimeHelp" class="form-text text-muted">Select the exam start time (e.g., 2025-05-18 09:00:00).</small>
+                        <div class="invalid-feedback" id="startTimeInvalid">Start time must be in the future.</div>
+                    </div>
+                    <div class="mb-3 position-relative">
+                        <label for="{{ form.end_time.id }}" class="form-label">End Time (YYYY-MM-DD HH:MM:SS)</label>
+                        {{ form.end_time(class="form-control datetimepicker", placeholder="2025-05-18 17:00:00", aria_describedby="endTimeHelp") }}
+                        <small id="endTimeHelp" class="form-text text-muted">Select the exam end time (e.g., 2025-05-18 17:00:00).</small>
+                        <div class="invalid-feedback" id="endTimeInvalid">End time must be after start time.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ form.is_online.id }}" class="form-label">Exam Type</label>
+                        {{ form.is_online(class="form-select", aria_describedby="isOnlineHelp") }}
+                        <small id="isOnlineHelp" class="form-text text-muted">Choose whether the exam is online or file-based.</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ form.question_1.id }}" class="form-label">Question 1 (Optional)</label>
+                        {{ form.question_1(class="form-control", rows="4", aria_describedby="question1Help") }}
+                        <small id="question1Help" class="form-text text-muted">Enter the first question for online exams.</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ form.question_2.id }}" class="form-label">Question 2 (Optional)</label>
+                        {{ form.question_2(class="form-control", rows="4", aria_describedby="question2Help") }}
+                        <small id="question2Help" class="form-text text-muted">Enter the second question for online exams.</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ form.question_3.id }}" class="form-label">Question 3 (Optional)</label>
+                        {{ form.question_3(class="form-control", rows="4", aria_describedby="question3Help") }}
+                        <small id="question3Help" class="form-text text-muted">Enter the third question for online exams.</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ form.question_4.id }}" class="form-label">Question 4 (Optional)</label>
+                        {{ form.question_4(class="form-control", rows="4", aria_describedby="question4Help") }}
+                        <small id="question4Help" class="form-text text-muted">Enter the fourth question for online exams.</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ form.question_5.id }}" class="form-label">Question 5 (Optional)</label>
+                        {{ form.question_5(class="form-control", rows="4", aria_describedby="question5Help") }}
+                        <small id="question5Help" class="form-text text-muted">Enter the fifth question for online exams.</small>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Create Exam</button>
+                </form>
+            </section>
+        {% endif %}
+
+        {% if role == 'learner' and questions %}
+            <section aria-labelledby="exam-form-heading">
+                <h3 class="mt-4" id="exam-form-heading">{{ exam_name }} - {{ exam_grade }}</h3>
+                <form method="POST" aria-labelledby="exam-form-heading">
+                    <input type="hidden" name="exam_id" value="{{ exam_id }}">
+                    {% for question in questions %}
+                        <div class="mb-3">
+                            <label for="answer_{{ loop.index }}" class="form-label">Question {{ loop.index }}: {{ question.question_text }}</label>
+                            <textarea name="answer_{{ loop.index }}" id="answer_{{ loop.index }}" class="form-control" rows="4" aria-describedby="answer{{ loop.index }}Help" required></textarea>
+                            <input type="hidden" name="question_id_{{ loop.index }}" value="{{ question.id }}">
+                            <small id="answer{{ loop.index }}Help" class="form-text text-muted">Enter your answer for question {{ loop.index }}.</small>
+                        </div>
+                    {% endfor %}
+                    <button type="submit" class="btn btn-primary">Submit Exam</button>
+                </form>
+            </section>
+        {% endif %}
+
+        <section aria-labelledby="available-exams-heading">
+            <h3 class="mt-4" id="available-exams-heading">Available Exams</h3>
+            {% if exams %}
+                <div class="table-responsive">
+                    <table class="table table-bordered" aria-describedby="examsTable">
+                        <caption id="examsTable">List of available exams</caption>
+                        <thead>
+                            <tr>
+                                <th scope="col">ID</th>
+                                <th scope="col">Grade</th>
+                                <th scope="col">Learning Area</th>
+                                <th scope="col">Exam Name</th>
+                                <th scope="col">Start Time</th>
+                                <th scope="col">End Time</th>
+                                <th scope="col">Expired</th>
+                                {% if role == 'learner' %}
+                                    <th scope="col">Status</th>
+                                    <th scope="col">Action</th>
+                                {% endif %}
+                                {% if role in ['admin', 'teacher'] %}
+                                    <th scope="col">Delete</th>
+                                {% endif %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for exam in exams %}
+                                <tr>
+                                    <td>{{ exam.id }}</td>
+                                    <td>{{ exam.grade }}</td>
+                                    <td>{{ exam.name }}</td>
+                                    <td class="exam-name">{{ exam.exam_name }}</td>
+                                    <td>{{ exam.start_time }}</td>
+                                    <td>{{ exam.end_time }}</td>
+                                    <td>
+                                        {% if expired_status[exam.id] %}
+                                            <span class="badge bg-danger">Expired</span>
+                                        {% else %}
+                                            <span class="badge bg-success">Active</span>
+                                        {% endif %}
+                                    </td>
+                                    {% if role == 'learner' %}
+                                        <td>
+                                            {% if submission_status[exam.id] %}
+                                                <span class="badge bg-success">Submitted</span>
+                                            {% else %}
+                                                <span class="badge bg-warning">Not Submitted</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if not submission_status[exam.id] and not expired_status[exam.id] %}
+                                                <a href="{{ url_for('online_exam', exam_id=exam.id) }}" class="btn btn-sm btn-primary">Take Exam</a>
+                                            {% else %}
+                                                <button class="btn btn-sm btn-secondary" disabled>
+                                                    {% if submission_status[exam.id] %}Submitted{% else %}Expired{% endif %}
+                                                </button>
+                                            {% endif %}
+                                        </td>
+                                    {% endif %}
+                                    {% if role in ['admin', 'teacher'] %}
+                                        <td>
+                                            {% if expired_status[exam.id] %}
+                                                <a href="{{ url_for('delete_exam', exam_id=exam.id, token=delete_token) }}" 
+                                                   class="btn btn-sm btn-danger delete-exam" 
+                                                   data-exam-name="{{ exam.exam_name }}" 
+                                                   aria-label="Delete exam {{ exam.exam_name }}">Delete</a>
+                                            {% else %}
+                                                <button class="btn btn-sm btn-secondary" disabled>Active</button>
+                                            {% endif %}
+                                        </td>
+                                    {% endif %}
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-center">No exams available.</p>
+            {% endif %}
+        </section>
+
+        {% if role in ['admin', 'teacher'] and exam_takers %}
+            <section aria-labelledby="exam-takers-heading">
+                <h3 class="mt-4" id="exam-takers-heading">Exam Takers</h3>
+                <div class="table-responsive">
+                    <table class="table table-bordered" aria-describedby="examTakersTable">
+                        <caption id="examTakersTable">List of exam submissions</caption>
+                        <thead>
+                            <tr>
+                                <th scope="col">Exam ID</th>
+                                <th scope="col">Learner</th>
+                                <th scope="col">Question ID</th>
+                                <th scope="col">Answer</th>
+                                <th scope="col">Submitted At</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for taker in exam_takers %}
+                                <tr>
+                                    <td>{{ taker.exam_id }}</td>
+                                    <td>{{ taker.full_name }}</td>
+                                    <td>{{ taker.question_id }}</td>
+                                    <td>{{ taker.answer_text }}</td>
+                                    <td>{{ taker.submitted_at }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        {% endif %}
+    </div>
+    <footer class="footer">
+        <p>© {{ current_year }} Jonyo Junior Secondary School. All rights reserved.<br>
+        Programmed by Mr. Obonga Rolex Oshia. Call: 0114745401 | Email: <a href="mailto:rolexoshia@gmail.com">rolexoshia@gmail.com</a></p>
+    </footer>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            flatpickr('.datetimepicker', {
+                enableTime: true,
+                dateFormat: 'Y-m-d H:i:S',
+                time_24hr: true,
+                minDate: new Date(),
+                defaultDate: new Date(),
+                minuteIncrement: 1,
+                allowInput: false,
+                altInput: true,
+                altFormat: 'Y-m-d H:i:S',
+                onChange: function(selectedDates, dateStr, instance) {
+                    const startInput = document.querySelector('#start_time');
+                    const endInput = document.querySelector('#end_time');
+                    const startInvalid = document.getElementById('startTimeInvalid');
+                    const endInvalid = document.getElementById('endTimeInvalid');
+
+                    if (startInput && endInput) {
+                        const startDate = startInput._flatpickr.selectedDates[0];
+                        const endDate = endInput._flatpickr.selectedDates[0];
+
+                        if (startDate && startDate < new Date()) {
+                            startInvalid.style.display = 'block';
+                        } else {
+                            startInvalid.style.display = 'none';
+                        }
+
+                        if (endDate && startDate && endDate <= startDate) {
+                            endInvalid.style.display = 'block';
+                        } else {
+                            endInvalid.style.display = 'none';
+                        }
+                    }
+                }
+            });
+
+            document.querySelectorAll('.delete-exam').forEach(link => {
+                link.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const examName = this.getAttribute('data-exam-name');
+                    if (confirm(`Are you sure you want to delete the exam "${examName}"?`)) {
+                        window.location.href = this.href;
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>s

@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Home - Jonyo Junior Secondary School{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="school-header">Jonyo Junior Secondary School</h1>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'danger' if category == 'danger' else 'success' if category == 'success' else 'warning' }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    <div class="card">
+        <div class="card-header">
+            <h2>Welcome to Jonyo Junior Secondary School</h2>
+        </div>
+        <div class="card-body">
+            <h3>About Us</h3>
+            <p>{{ about_content|replace('\n', '<br>')|safe }}</p>
+            <h3>Contact Information</h3>
+            <p>{{ contact_content|replace('\n', '<br>')|safe }}</p>
+            <h3>Announcements</h3>
+            <p>{{ announcement_content|replace('\n', '<br>')|safe }}</p>
+            {% if current_user.is_authenticated %}
+                <h3>Your Dashboard</h3>
+                <p>
+                    {% if session.role == 'admin' %}
+                        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-primary">Admin Dashboard</a>
+                    {% elif session.role == 'teacher' %}
+                        <a href="{{ url_for('teacher_dashboard') }}" class="btn btn-primary">Teacher Dashboard</a>
+                    {% elif session.role == 'bursar' %}
+                        <a href="{{ url_for('bursar_dashboard') }}" class="btn btn-primary">Bursar Dashboard</a>
+                    {% elif session.role == 'parent' %}
+                        <a href="{{ url_for('parent_dashboard') }}" class="btn btn-primary">Parent Dashboard</a>
+                    {% elif session.role == 'learner' %}
+                        <a href="{{ url_for('learner_dashboard') }}" class="btn btn-primary">Learner Dashboard</a>
+                    {% endif %}
+                    <div class="d-flex justify-content-end">
+                        <a href="{{ url_for('logout') }}" class="btn btn-secondary">Logout</a>
+                    </div>
+                </p>
+            {% else %}
+                <h3>Get Started</h3>
+                <p>
+                    <div class="d-flex justify-content-end">
+                        <a href="{{ url_for('login') }}" class="btn btn-primary me-2">Login</a>
+                        <a href="{{ url_for('public_register') }}" class="btn btn-primary">Register</a>
+                    </div>
+                </p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

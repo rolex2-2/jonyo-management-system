@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Learner Dashboard - Jonyo Junior Secondary School</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        body {
+            background-color: #f0f8ff; /* Match online_exam.html */
+            font-family: Arial, sans-serif;
+        }
+        .navbar, .footer {
+            background-color: #343a40; /* Match online_exam.html */
+            color: #ffffff;
+        }
+        .navbar-brand, .nav-link, .footer a {
+            color: #ffffff !important;
+        }
+        .container {
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            max-width: 1200px;
+        }
+        .footer {
+            text-align: center;
+            padding: 15px 0;
+            width: 100%;
+            margin-top: 20px;
+        }
+        .section-title {
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 5px;
+            margin-bottom: 15px;
+            color: #343a40;
+        }
+        .school-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .table th, .table td {
+            vertical-align: middle;
+            text-align: center;
+        }
+        .alert-container {
+            position: relative;
+            z-index: 1000;
+        }
+        .alert {
+            animation: fadeOut 10s forwards;
+        }
+        @keyframes fadeOut {
+            0% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { opacity: 0; display: none; }
+        }
+        .table-sortable th {
+            cursor: pointer;
+            position: relative;
+        }
+        .table-sortable th.sorted-asc::after {
+            content: ' ↑';
+            color: #007bff;
+        }
+        .table-sortable th.sorted-desc::after {
+            content: ' ↓';
+            color: #007bff;
+        }
+        .table tbody {
+            background-color: #f5f5dc; /* Match online_exam.html */
+        }
+        .table thead {
+            background-color: #6c757d;
+            color: #ffffff;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg" aria-label="Main navigation">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('learner_dashboard') }}">Jonyo Junior Secondary School</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('timetable') }}">Timetable</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('logout') }}">Logout</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    <div class="container">
+        <div class="text-center mb-4">
+            <h1 class="school-header">Jonyo Junior Secondary School</h1>
+        </div>
+        <h2 class="text-center">Welcome, {{ learner_name }}</h2>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="alert-container">
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'danger' if category == 'danger' else 'success' if category == 'success' else 'warning' if category == 'warning' else 'info' }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            {% if 'Contact admin' in message %}
+                                <br>Contact: Email <a href="mailto:rolexoshia@gmail.com">rolexoshia@gmail.com</a> or Phone 0114745401.
+                            {% endif %}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+        
+        <h3 class="section-title">Current Term Information</h3>
+        {% if term_info and term_info.term != 'N/A' %}
+            <p><strong>Term:</strong> {{ term_info.term }}</p>
+            <p><strong>Start Date:</strong> {{ term_info.start_date }}</p>
+            <p><strong>End Date:</strong> {{ term_info.end_date }}</p>
+            <p><strong>Principal:</strong> {{ term_info.principal_name }}</p>
+        {% else %}
+            <p class="text-warning">No term information available. Please check with the school administration.</p>
+        {% endif %}
+        
+        <h3 class="section-title">Available Online Exams</h3>
+        {% if online_exams %}
+            <table class="table table-striped table-bordered table-sortable" aria-describedby="onlineExamsInfo">
+                <caption id="onlineExamsInfo">List of active online exams for your grade</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">Learning Area</th>
+                        <th scope="col">Exam Name</th>
+                        <th scope="col">Start Time</th>
+                        <th scope="col">End Time</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for exam_id, learning_area, exam_name, start_time, end_time in online_exams %}
+                        <tr>
+                            <td>{{ learning_area }}</td>
+                            <td>{{ exam_name }}</td>
+                            <td>{{ start_time }}</td>
+                            <td>{{ end_time }}</td>
+                            <td>
+                                {% if submission_status.get(exam_id, False) %}
+                                    <span class="badge bg-success">Submitted</span>
+                                {% elif expired_status.get(exam_id, False) %}
+                                    <span class="badge bg-danger">Expired</span>
+                                {% else %}
+                                    <span class="badge bg-warning">Not Submitted</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if not submission_status.get(exam_id, False) and not expired_status.get(exam_id, False) %}
+                                    <a href="{{ url_for('online_exam', exam_id=exam_id) }}" class="btn btn-primary btn-sm">Take Exam</a>
+                                {% else %}
+                                    <button class="btn btn-secondary btn-sm" disabled>
+                                        {% if submission_status.get(exam_id, False) %}Submitted{% else %}Expired{% endif %}
+                                    </button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% if not online_exams|length %}
+                <p class="text-info" style="display: none;" id="debug-no-exams">Debug: No exams fetched (possible time or active filter issue). Contact admin.</p>
+            {% endif %}
+        {% else %}
+            <p class="text-warning">No online exams available. Check back later.</p>
+            <p class="text-info" style="display: none;" id="debug-no-exams">Debug: No exams fetched (possible time or active filter issue). Contact admin.</p>
+        {% endif %}
+        
+        <h3 class="section-title">Report Cards</h3>
+        {% if report_cards %}
+            <table class="table table-striped table-bordered table-sortable" aria-describedby="reportCardsInfo">
+                <caption id="reportCardsInfo">List of available report cards</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">Term</th>
+                        <th scope="col">Year</th>
+                        <th scope="col">Exam Type</th>
+                        <th scope="col">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for term, year, exam_type in report_cards %}
+                        <tr>
+                            <td>{{ term }}</td>
+                            <td>{{ year }}</td>
+                            <td>{{ exam_type }}</td>
+                            <td>
+                                <a href="{{ url_for('report_card', admission_no=session['user_id'], term=term, year=year, exam_type=exam_type) }}" 
+                                   class="btn btn-primary btn-sm">View Report Card</a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="text-warning">No report cards available. Contact the school for details.</p>
+        {% endif %}
+        
+        <h3 class="section-title">Fee Statements</h3>
+        {% if fee_statements %}
+            <table class="table table-striped table-bordered table-sortable" aria-describedby="feeStatementsInfo">
+                <caption id="feeStatementsInfo">List of fee statements</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">Term</th>
+                        <th scope="col">Year</th>
+                        <th scope="col">Total Fee</th>
+                        <th scope="col">Amount Paid</th>
+                        <th scope="col">Balance</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for total_fee, amount_paid, balance, term, year in fee_statements %}
+                        <tr>
+                            <td>{{ term }}</td>
+                            <td>{{ year }}</td>
+                            <td>{{ total_fee }}</td>
+                            <td>{{ amount_paid }}</td>
+                            <td>{{ balance }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="text-warning">No fee statements available. Contact the bursar for details.</p>
+        {% endif %}
+        
+        <h3 class="section-title">Notes</h3>
+        {% if notes %}
+            <table class="table table-striped table-bordered table-sortable" aria-describedby="notesInfo">
+                <caption id="notesInfo">List of available notes for your grade</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">Grade</th>
+                        <th scope="col">Learning Area</th>
+                        <th scope="col">Upload Date</th>
+                        <th scope="col">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for note_id, grade, learning_area, upload_date in notes %}
+                        <tr>
+                            <td>{{ grade }}</td>
+                            <td>{{ learning_area }}</td>
+                            <td>{{ upload_date }}</td>
+                            <td>
+                                <a href="{{ url_for('download_note', note_id=note_id) }}" class="btn btn-primary btn-sm">Download</a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="text-warning">No notes available. Check with your teachers.</p>
+        {% endif %}
+    </div>
+    <footer class="footer">
+        <p>© {{ current_year }} Jonyo Junior Secondary School. All rights reserved.<br>
+        Programmed by Mr. Obonga Rolex Oshia. Call: 0114745401 | Email: <a href="mailto:rolexoshia@gmail.com">rolexoshia@gmail.com</a></p>
+    </footer>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Table sorting with visual feedback
+        document.querySelectorAll('.table-sortable th').forEach(header => {
+            header.addEventListener('click', () => {
+                const table = header.closest('table');
+                const index = Array.from(header.parentElement.children).indexOf(header);
+                const rows = Array.from(table.querySelector('tbody').rows);
+                const isNumeric = header.textContent.includes('Year') || header.textContent.includes('Fee') || header.textContent.includes('Paid') || header.textContent.includes('Balance');
+
+                rows.sort((a, b) => {
+                    let aValue = a.cells[index].textContent.trim();
+                    let bValue = b.cells[index].textContent.trim();
+
+                    if (isNumeric) {
+                        aValue = parseFloat(aValue) || 0;
+                        bValue = parseFloat(bValue) || 0;
+                        return aValue - bValue;
+                    } else {
+                        return aValue.localeCompare(bValue);
+                    }
+                });
+
+                const headers = table.querySelectorAll('th');
+                headers.forEach(h => h.classList.remove('sorted-asc', 'sorted-desc'));
+                if (header.classList.contains('sorted-asc')) {
+                    rows.reverse();
+                    header.classList.remove('sorted-asc');
+                    header.classList.add('sorted-desc');
+                } else {
+                    header.classList.remove('sorted-desc');
+                    header.classList.add('sorted-asc');
+                }
+
+                const tbody = table.querySelector('tbody');
+                tbody.innerHTML = '';
+                rows.forEach(row => tbody.appendChild(row));
+            });
+        });
+
+        // Show debug message for admins (if role is admin)
+        {% if session.get('role') == 'admin' %}
+            document.getElementById('debug-no-exams').style.display = 'block';
+        {% endif %}
+    </script>
+</body>
+</html>

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View My Marks - Jonyo Junior Secondary School</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        body {
+            background-color: #f0f8ff;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .alert-success { background-color: #28a745; color: #ffffff; }
+        .alert-danger { background-color: #dc3545; color: #ffffff; }
+        .alert-warning { background-color: #ffc107; color: #000000; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+        th {
+            background-color: #343a40;
+            color: #ffffff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2 class="text-center">View My Entered Marks</h2>
+        <h4 class="text-center">Teacher: {{ teacher_name }}</h4>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        <form method="POST" class="mb-4">
+            {{ form.hidden_tag() }}
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    {{ form.grade.label }} {{ form.grade(class="form-control") }}
+                </div>
+                <div class="col-md-6 mb-3">
+                    {{ form.term.label }} {{ form.term(class="form-control") }}
+                </div>
+            </div>
+            <div class="text-center">
+                {{ form.submit(class="btn btn-primary") }}
+            </div>
+        </form>
+        <h3>Marks for {{ selected_grade }}, {{ selected_term }}</h3>
+        {% if marks %}
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Learner Name</th>
+                    <th>Admission No</th>
+                    <th>Learning Area</th>
+                    <th>Exam Type</th>
+                    <th>Marks</th>
+                    <th>Points</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for mark in marks %}
+                <tr>
+                    <td>{{ mark[0] }}</td>
+                    <td>{{ mark[1] }}</td>
+                    <td>{{ mark[2] }}</td>
+                    <td>{{ mark[4] }}</td>
+                    <td>{{ mark[3] | float | round(1) }}</td>
+                    <td>{{ mark[5] | float | round(1) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>No marks found for the selected grade and term.</p>
+        {% endif %}
+        <a href="{{ url_for('teacher_dashboard') }}" class="btn btn-secondary mt-3">Back to Dashboard</a>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

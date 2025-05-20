@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Public Registration - Jonyo Junior Secondary School</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        body {
+            background-color: #f0f8ff;
+            font-family: Arial, sans-serif;
+        }
+        .register-container {
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            max-width: 600px;
+        }
+        .footer {
+            text-align: center;
+            padding: 15px 0;
+            background-color: #343a40;
+            color: #ffffff;
+            position: relative;
+            bottom: 0;
+            width: 100%;
+        }
+        .footer a {
+            color: #ffffff;
+        }
+        .alert-container {
+            position: relative;
+            z-index: 1000;
+            aria-live: "polite";
+        }
+        .alert {
+            animation: fadeOut 10s forwards;
+        }
+        @keyframes fadeOut {
+            0% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { opacity: 0; display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container register-container">
+        <h2 class="text-center mb-4">Public Registration</h2>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="alert-container">
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+        <form method="POST" action="{{ url_for('public_register') }}">
+            <div class="mb-3">
+                <label for="role" class="form-label">Role</label>
+                <select name="role" id="role" class="form-control" required>
+                    <option value="parent">Parent</option>
+                    <option value="admin">Admin</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label for="username" class="form-label">Username</label>
+                <input type="text" name="username" id="username" class="form-control" required maxlength="50">
+                <small class="form-text text-muted">3-50 characters, no quotes or semicolons.</small>
+            </div>
+            <div class="mb-3">
+                <label for="full_name" class="form-label">Full Name</label>
+                <input type="text" name="full_name" id="full_name" class="form-control" required>
+                <small class="form-text text-muted">Include first and last name.</small>
+            </div>
+            <div class="mb-3">
+                <label for="password" class="form-label">Password</label>
+                <input type="password" name="password" id="password" class="form-control" required>
+            </div>
+            <div class="mb-3">
+                <label for="confirm_password" class="form-label">Confirm Password</label>
+                <input type="password" name="confirm_password" id="confirm_password" class="form-control" required>
+            </div>
+            <div class="mb-3">
+                <label for="phone" class="form-label">Phone Number</label>
+                <input type="text" name="phone" id="phone" class="form-control" placeholder="e.g., 0712345678">
+                <small class="form-text text-muted">Required for parents, 10 digits starting with 0.</small>
+            </div>
+            <div class="mb-3">
+                <label for="learner_admission" class="form-label">Learner Admission Number</label>
+                <input type="text" name="learner_admission" id="learner_admission" class="form-control">
+                <small class="form-text text-muted">Required for parents.</small>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Register</button>
+        </form>
+        <p class="text-center mt-3">Already have an account? <a href="{{ url_for('login') }}">Login</a></p>
+    </div>
+    <footer class="footer">
+        <p>© 2025 Jonyo Junior Secondary School. All rights reserved.<br>
+        Programmed by Mr. Obonga Rolex Oshia. Call: 0114745401 | Email: <a href="mailto:rolexoshia@gmail.com">rolexoshia@gmail.com</a></p>
+    </footer>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

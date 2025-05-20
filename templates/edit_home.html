@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Home Page{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2>Edit Home Page</h2>
+    </div>
+    <div class="card-body">
+        <form method="POST">
+            <div class="mb-3">
+                <label for="about" class="form-label">About Us</label>
+                <textarea class="form-control" id="about" name="about" rows="5">{{ about }}</textarea>
+            </div>
+            <div class="mb-3">
+                <label for="contact" class="form-label">Contact Information</label>
+                <textarea class="form-control" id="contact" name="contact" rows="3">{{ contact }}</textarea>
+            </div>
+            <div class="mb-3">
+                <label for="announcement" class="form-label">Announcements</label>
+                <textarea class="form-control" id="announcement" name="announcement" rows="3">{{ announcement }}</textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">Update</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

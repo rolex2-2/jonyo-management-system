@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Term Information{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2>Edit Term Information</h2>
+    </div>
+    <div class="card-body">
+        <form method="POST">
+            <div class="mb-3">
+                <label for="term" class="form-label">Term</label>
+                <select class="form-select" id="term" name="term" required>
+                    <option value="Term 1">Term 1</option>
+                    <option value="Term 2">Term 2</option>
+                    <option value="Term 3">Term 3</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label for="start_date" class="form-label">Start Date</label>
+                <input type="date" class="form-control" id="start_date" name="start_date" required>
+            </div>
+            <div class="mb-3">
+                <label for="end_date" class="form-label">End Date</label>
+                <input type="date" class="form-control" id="end_date" name="end_date" required>
+            </div>
+            <div class="mb-3">
+                <label for="principal_name" class="form-label">Principal Name</label>
+                <input type="text" class="form-control" id="principal_name" name="principal_name" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Update Term</button>
+        </form>
+
+        <h3 class="mt-4">Term History</h3>
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Term</th>
+                    <th>Start Date</th>
+                    <th>End Date</th>
+                    <th>Principal</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for term in term_info %}
+                    <tr>
+                        <td>{{ term[0] }}</td>
+                        <td>{{ term[1] }}</td>
+                        <td>{{ term[2] }}</td>
+                        <td>{{ term[3] }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

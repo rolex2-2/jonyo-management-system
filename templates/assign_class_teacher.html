@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Assign Class Teacher{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm">
+    <div class="card-header bg-primary text-white">
+        <h2 class="mb-0">Assign Class Teacher</h2>
+    </div>
+    <div class="card-body">
+        <!-- Flash messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Assign Class Teacher Form -->
+        <h3 class="mt-4">Assign a Class Teacher</h3>
+        <form method="POST">
+            <input type="hidden" name="action" value="assign">
+            <div class="mb-3">
+                <label for="grade" class="form-label">Grade</label>
+                <select class="form-select" id="grade" name="grade" required>
+                    <option value="">Select Grade</option>
+                    {% for g in grades %}
+                        <option value="{{ g }}">{{ g }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="mb-3">
+                <label for="teacher_id" class="form-label">Teacher</label>
+                <select class="form-select" id="teacher_id" name="teacher_id" required>
+                    <option value="">Select Teacher</option>
+                    {% for t in teachers %}
+                        <option value="{{ t[0] }}">{{ t[1] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Assign</button>
+        </form>
+
+        <!-- Current Class Teachers -->
+        <h3 class="mt-4">Current Class Teachers</h3>
+        {% if class_teachers %}
+            <table class="table table-bordered table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>Grade</th>
+                        <th>Teacher</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ct in class_teachers %}
+                        <tr>
+                            <td>{{ ct[2] }}</td> <!-- Grade is at index 2 -->
+                            <td>{{ ct[1] }}</td> <!-- Teacher name is at index 1 -->
+                            <td>
+                                <form method="POST" action="{{ url_for('assign_class_teacher') }}" class="d-inline">
+                                    <input type="hidden" name="action" value="delete">
+                                    <input type="hidden" name="teacher_id" value="{{ ct[0] }}">
+                                    <input type="hidden" name="grade" value="{{ ct[2] }}">
+                                    <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to remove this assignment?')">Remove</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="text-center">No class teacher assignments defined.</p>
+        {% endif %}
+
+        <!-- Back to Dashboard -->
+        <div class="mt-4">
+            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

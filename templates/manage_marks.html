@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Marks - Jonyo Junior Secondary School</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        body {
+            background-color: #f0f8ff;
+            font-family: Arial, sans-serif;
+        }
+        .navbar, .footer {
+            background-color: #343a40;
+            color: #ffffff;
+        }
+        .navbar-brand, .nav-link, .footer a {
+            color: #ffffff !important;
+        }
+        .container {
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .footer {
+            text-align: center;
+            padding: 15px 0;
+            position: relative;
+            bottom: 0;
+            width: 100%;
+        }
+        .section-title {
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 5px;
+            margin-bottom: 15px;
+        }
+        .school-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .table th, .table td {
+            vertical-align: middle;
+        }
+        .marks-input {
+            width: 80px;
+        }
+        .table-responsive {
+            overflow-x: auto;
+        }
+        .grade-header {
+            background-color: #e9ecef;
+            font-size: 1.2em;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('admin_dashboard' if session['role'] == 'admin' else 'teacher_dashboard') }}">Jonyo Junior Secondary School</a>
+            <div class="collapse navbar-collapse">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('logout') }}">Logout</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    <div class="container">
+        <h1 class="school-header">Jonyo Junior Secondary School</h1>
+        <h2 class="text-center">Manage Marks</h2>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'danger' else 'success' if category == 'success' else 'warning' }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        <h3 class="section-title">Select Criteria</h3>
+        <form method="POST" action="{{ url_for('manage_marks') }}" class="mb-4">
+            <div class="row mb-3">
+                <div class="col-md-3">
+                    <label for="grade" class="form-label">Grade</label>
+                    <select name="grade" id="grade" class="form-select" required>
+                        <option value="" disabled {% if not selected_grade %}selected{% endif %}>Select Grade</option>
+                        {% for grade in grades %}
+                            <option value="{{ grade }}" {% if grade == selected_grade %}selected{% endif %}>{{ grade }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="term" class="form-label">Term</label>
+                    <select name="term" id="term" class="form-select" required>
+                        <option value="" disabled {% if not term %}selected{% endif %}>Select Term</option>
+                        {% for t in terms %}
+                            <option value="{{ t }}" {% if t == term %}selected{% endif %}>{{ t }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="exam_type" class="form-label">Exam Type</label>
+                    <select name="exam_type" id="exam_type" class="form-select" required>
+                        <option value="" disabled {% if not exam_type %}selected{% endif %}>Select Exam Type</option>
+                        {% for type in ['Mid Term', 'End Term', 'CAT'] %}
+                            <option value="{{ type }}" {% if type == exam_type %}selected{% endif %}>{{ type }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="year" class="form-label">Year</label>
+                    <input type="number" name="year" id="year" class="form-control" value="{{ year }}" required min="2000" max="{{ current_year + 1 }}">
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <label for="cat_marks" class="form-label">Include CAT Marks (End Term)</label>
+                    <select name="cat_marks" id="cat_marks" class="form-select">
+                        <option value="no" {% if cat_marks == 'no' or not cat_marks %}selected{% endif %}>No</option>
+                        <option value="yes" {% if cat_marks == 'yes' %}selected{% endif %}>Yes</option>
+                    </select>
+                </div>
+                <div class="col-md-8">
+                    <label for="search_learner" class="form-label">Search Learner</label>
+                    <div class="input-group">
+                        <input type="text" name="search_learner" id="search_learner" class="form-control" value="{{ search_learner }}" placeholder="Enter learner name">
+                        <button type="submit" class="btn btn-primary">Filter</button>
+                    </div>
+                </div>
+            </div>
+        </form>
+        
+        {% if students %}
+            <h3 class="section-title">Enter Marks for {{ selected_grade }} ({{ exam_type }}, {{ term }})</h3>
+            <form method="POST" action="{{ url_for('manage_marks') }}">
+                <input type="hidden" name="grade" value="{{ selected_grade }}">
+                <input type="hidden" name="term" value="{{ term }}">
+                <input type="hidden" name="exam_type" value="{{ exam_type }}">
+                <input type="hidden" name="year" value="{{ year }}">
+                <input type="hidden" name="cat_marks" value="{{ cat_marks }}">
+                <div class="table-responsive">
+                    <table class="table table-striped table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Admission No</th>
+                                <th>Full Name</th>
+                                {% for area in learning_areas %}
+                                    {% if area.grade == selected_grade %}
+                                        <th>{{ area.name }}</th>
+                                    {% endif %}
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for student in students %}
+                                <tr>
+                                    <td>{{ student.admission_no }}</td>
+                                    <td>{{ student.full_name }}</td>
+                                    {% for area in learning_areas %}
+                                        {% if area.grade == selected_grade %}
+                                            <td>
+                                                <input type="number" name="marks_{{ student.admission_no }}_{{ area.id }}"
+                                                       value="{{ existing_marks[student.admission_no][area.id] if student.admission_no in existing_marks and area.id in existing_marks[student.admission_no] else '' }}"
+                                                       class="form-control marks-input" min="0" max="100" placeholder="0-100">
+                                            </td>
+                                        {% endif %}
+                                    {% endfor %}
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="mb-3">
+                    <button type="submit" name="submit_marks" class="btn btn-success">Submit Marks</button>
+                </div>
+            </form>
+        {% else %}
+            <p class="text-warning">No students found for {{ selected_grade }}. Please check filters or add students.</p>
+        {% endif %}
+        <a href="{{ url_for('admin_dashboard' if session['role'] == 'admin' else 'teacher_dashboard') }}" class="btn btn-primary mt-3">Back to Dashboard</a>
+    </div>
+    <footer class="footer">
+        <p>© {{ current_year }} Jonyo Junior Secondary School. All rights reserved.<br>
+        Programmed by Mr. Obonga Rolex Oshia. Call: 0114745401 | Email: <a href="mailto:rolexoshia@gmail.com">rolexoshia@gmail.com</a></p>
+    </footer>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

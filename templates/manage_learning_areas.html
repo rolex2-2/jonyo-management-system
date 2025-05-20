@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Learning Areas{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2>Manage Learning Areas</h2>
+    </div>
+    <div class="card-body">
+        <!-- Flash messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Add Learning Area Form -->
+        <h3>Add New Learning Area</h3>
+        <form method="POST">
+            <input type="hidden" name="action" value="add">
+            <div class="mb-3">
+                <label for="name" class="form-label">Learning Area Name</label>
+                <input type="text" class="form-control" id="name" name="name" required>
+            </div>
+            <div class="mb-3">
+                <label for="grade" class="form-label">Grade</label>
+                <select class="form-select" id="grade" name="grade" required>
+                    <option value="Grade 7">Grade 7</option>
+                    <option value="Grade 8">Grade 8</option>
+                    <option value="Grade 9">Grade 9</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Add Learning Area</button>
+        </form>
+
+        <!-- Existing Learning Areas Table -->
+        <h3 class="mt-4">Existing Learning Areas</h3>
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Grade</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for area in learning_areas %}
+                    <tr>
+                        <td>{{ area[0] }}</td>
+                        <td>{{ area[1] }}</td>
+                        <td>{{ area[2] }}</td>
+                        <td>
+                            <form method="POST" style="display:inline;">
+                                <input type="hidden" name="action" value="delete">
+                                <input type="hidden" name="area_id" value="{{ area[0] }}">
+                                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this learning area?')">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+                {% if not learning_areas %}
+                    <tr>
+                        <td colspan="4">No learning areas defined.</td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

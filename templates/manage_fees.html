@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Fees - Jonyo Junior Secondary School</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        body {
+            background-color: #f0f8ff;
+            font-family: Arial, sans-serif;
+        }
+        .navbar, .footer {
+            background-color: #343a40;
+            color: #ffffff;
+        }
+        .navbar-brand, .nav-link, .footer a {
+            color: #ffffff !important;
+        }
+        .container {
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #ffffff; /* White background for consistency */
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            max-width: 1000px; /* Increased for better table fit */
+        }
+        .footer {
+            text-align: center;
+            padding: 15px 0;
+            position: relative;
+            bottom: 0;
+            width: 100%;
+        }
+        .section-title {
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 5px;
+            margin-bottom: 15px;
+        }
+        .school-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .table th, .table td {
+            vertical-align: middle;
+            text-align: center; /* Center-align for readability */
+        }
+        .table .full-name {
+            white-space: normal; /* Allow wrapping */
+            word-wrap: break-word;
+            max-width: 200px; /* Prevent overflow */
+        }
+        .table .fee-input {
+            width: 120px; /* Fixed width for fee inputs */
+            margin: 0 auto;
+        }
+        .alert-negative {
+            color: #dc3545; /* Bootstrap danger color */
+            font-size: 0.9em;
+            margin-top: 5px;
+            display: none; /* Hidden by default */
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('bursar_dashboard' if session['role'] == 'bursar' else 'admin_dashboard') }}">Jonyo Junior Secondary School</a>
+            <div class="collapse navbar-collapse">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('logout') }}">Logout</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    <div class="container">
+        <h1 class="school-header">Jonyo Junior Secondary School</h1>
+        <h2 class="text-center">Manage Fees</h2>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'danger' else 'success' if category == 'success' else 'warning' }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        <h3 class="section-title">Select Grade, Term, and Year</h3>
+        <form method="POST" action="{{ url_for('manage_fees') }}">
+            <!-- Add CSRF token -->
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <label for="grade" class="form-label">Grade</label>
+                    <select name="grade" id="grade" class="form-select" onchange="this.form.submit()">
+                        {% for grade in grades %}
+                            <option value="{{ grade }}" {{ 'selected' if grade == selected_grade }}>{{ grade }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="term" class="form-label">Term</label>
+                    <select name="term" id="term" class="form-select">
+                        {% for t in terms %}
+                            <option value="{{ t }}" {{ 'selected' if t == term }}>{{ t }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="year" class="form-label">Year</label>
+                    <input type="number" name="year" id="year" class="form-control" value="{{ year }}" min="2020" max="2030" required>
+                </div>
+            </div>
+            {% if students %}
+                <h3 class="section-title">Enter Fee Details for {{ selected_grade }}</h3>
+                <div class="table-responsive">
+                    <table class="table table-striped table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Admission No</th>
+                                <th>Full Name</th>
+                                <th>Total Fee</th>
+                                <th>Amount Paid</th>
+                                <th>Balance</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for student in students %}
+                                <tr>
+                                    <td>{{ student[0] }}</td>
+                                    <td class="full-name">{{ student[1] }}</td>
+                                    <td>
+                                        <input type="number" name="total_fee_{{ student[0] }}" class="form-control fee-input" min="0" value="0" required>
+                                    </td>
+                                    <td>
+                                        <input type="number" name="amount_paid_{{ student[0] }}" class="form-control fee-input" min="0" value="0" required>
+                                    </td>
+                                    <td>
+                                        <input type="number" name="balance_{{ student[0] }}" class="form-control fee-input" readonly>
+                                        <div class="alert-negative" id="alert_{{ student[0] }}">Warning: Balance cannot be negative!</div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="mb-3">
+                    <button type="submit" name="submit_fees" class="btn btn-primary">Submit Fees</button>
+                    <a href="{{ url_for('manage_fees', grade=selected_grade, term=term, year=year, download='true') }}" class="btn btn-secondary">Download Fee Statement</a>
+                </div>
+            {% else %}
+                <p class="text-warning">No students found for {{ selected_grade }}.</p>
+            {% endif %}
+        </form>
+        <a href="{{ url_for('bursar_dashboard' if session['role'] == 'bursar' else 'admin_dashboard') }}" class="btn btn-primary mt-3">Back to Dashboard</a>
+    </div>
+    <footer class="footer">
+        <p>© {{ current_year }} Jonyo Junior Secondary School. All rights reserved.<br>
+        Programmed by Mr. Obonga Rolex Oshia. Call: 0114745401 | Email: <a href="mailto:rolexoshia@gmail.com">rolexoshia@gmail.com</a></p>
+    </footer>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Auto-calculate balance and show warning for negative balance
+        document.querySelectorAll('input[name^="total_fee_"], input[name^="amount_paid_"]').forEach(input => {
+            input.addEventListener('input', function() {
+                const adm_no = this.name.split('_').pop();
+                const total_fee = parseInt(document.querySelector(`input[name="total_fee_${adm_no}"]`).value) || 0;
+                const amount_paid = parseInt(document.querySelector(`input[name="amount_paid_${adm_no}"]`).value) || 0;
+                const balance_input = document.querySelector(`input[name="balance_${adm_no}"]`);
+                const alert = document.querySelector(`#alert_${adm_no}`);
+                const balance = total_fee - amount_paid;
+                balance_input.value = balance;
+                if (balance < 0) {
+                    alert.style.display = 'block';
+                } else {
+                    alert.style.display = 'none';
+                }
+            });
+        });
+    </script>
+</body>
+</html>

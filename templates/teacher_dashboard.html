@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Dashboard - Jonyo Junior Secondary School</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        body {
+            background-color: #f0f8ff;
+            font-family: Arial, sans-serif;
+        }
+        .navbar, .footer {
+            background-color: #343a40;
+            color: #ffffff;
+        }
+        .navbar-brand, .nav-link, .footer a {
+            color: #ffffff !important;
+        }
+        .dashboard-container {
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            max-width: 1200px;
+        }
+        .footer {
+            text-align: center;
+            padding: 15px 0;
+            position: relative;
+            bottom: 0;
+            width: 100%;
+        }
+        .school-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .table thead {
+            background-color: #6c757d;
+            color: #ffffff;
+        }
+        .table tbody {
+            background-color: #f5f5dc;
+        }
+        .table th, .table td {
+            text-align: center;
+            vertical-align: middle;
+        }
+        .alert-container {
+            position: relative;
+            z-index: 1000;
+            aria-live: "polite";
+        }
+        .alert {
+            animation: fadeOut 10s forwards;
+        }
+        @keyframes fadeOut {
+            0% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { opacity: 0; display: none; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg" aria-label="Main navigation">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('teacher_dashboard') }}">Jonyo Junior Secondary School</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('online_exam') }}">Online Exams</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('manage_marks') }}">Manage Marks</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('upload_notes') }}">Upload Notes</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('view_teacher_marks') }}">View My Marks</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('logout') }}">Logout</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    <div class="container dashboard-container">
+        <h2 class="school-header">Teacher Dashboard</h2>
+        <h4>Welcome, {{ teacher_name }}</h4>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="alert-container">
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+        <div class="row">
+            <div class="col-md-3 mb-3">
+                <a href="{{ url_for('manage_marks') }}" class="btn btn-primary w-100">Manage Marks</a>
+            </div>
+            <div class="col-md-3 mb-3">
+                <a href="{{ url_for('upload_notes') }}" class="btn btn-primary w-100">Upload Notes</a>
+            </div>
+            <div class="col-md-3 mb-3">
+                <a href="{{ url_for('online_exam') }}" class="btn btn-primary w-100">Online Exams</a>
+            </div>
+            <div class="col-md-3 mb-3">
+                <a href="{{ url_for('view_teacher_marks') }}" class="btn btn-primary w-100">View My Marks</a>
+            </div>
+        </div>
+        <h3>Submit Marks</h3>
+        <form method="POST" action="{{ url_for('manage_marks') }}">
+            {{ marks_form.hidden_tag() }}
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">{{ marks_form.learner_id.label }}</label>
+                    {{ marks_form.learner_id(class="form-control") }}
+                    {% if marks_form.learner_id.errors %}
+                        {% for error in marks_form.learner_id.errors %}
+                            <span class="text-danger">{{ error }}</span>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">{{ marks_form.learning_area.label }}</label>
+                    {{ marks_form.learning_area(class="form-control") }}
+                    {% if marks_form.learning_area.errors %}
+                        {% for error in marks_form.learning_area.errors %}
+                            <span class="text-danger">{{ error }}</span>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">{{ marks_form.exam_type.label }}</label>
+                    {{ marks_form.exam_type(class="form-control") }}
+                    {% if marks_form.exam_type.errors %}
+                        {% for error in marks_form.exam_type.errors %}
+                            <span class="text-danger">{{ error }}</span>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">{{ marks_form.term.label }}</label>
+                    {{ marks_form.term(class="form-control") }}
+                    {% if marks_form.term.errors %}
+                        {% for error in marks_form.term.errors %}
+                            <span class="text-danger">{{ error }}</span>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">{{ marks_form.year.label }}</label>
+                    {{ marks_form.year(class="form-control") }}
+                    {% if marks_form.year.errors %}
+                        {% for error in marks_form.year.errors %}
+                            <span class="text-danger">{{ error }}</span>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">{{ marks_form.marks.label }}</label>
+                    {{ marks_form.marks(class="form-control") }}
+                    {% if marks_form.marks.errors %}
+                        {% for error in marks_form.marks.errors %}
+                            <span class="text-danger">{{ error }}</span>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+            </div>
+            <button type="submit" class="btn btn-success">Submit Marks</button>
+        </form>
+        <h3>Assigned Learning Areas</h3>
+        {% if learning_areas %}
+            <ul>
+                {% for area in learning_areas %}
+                    <li>{{ area.name }} (Grade {{ area.grade }})</li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>No learning areas assigned.</p>
+        {% endif %}
+        <h3>Assigned Classes</h3>
+        {% if classes %}
+            <ul>
+                {% for grade in classes %}
+                    <li>{{ grade }}</li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>No classes assigned.</p>
+        {% endif %}
+        <h3>My Exams</h3>
+        {% if exams %}
+            <form method="POST" action="{{ url_for('delete_expired_exams') }}">
+                {{ marks_form.hidden_tag() }}
+                <button type="submit" class="btn btn-danger mb-3" onclick="return confirm('Are you sure you want to delete all expired exams?')">Delete All Expired Exams</button>
+            </form>
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Exam Name</th>
+                        <th>Grade</th>
+                        <th>Learning Area</th>
+                        <th>Start Time</th>
+                        <th>End Time</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for exam in exams %}
+                        <tr>
+                            <td>{{ exam.exam_name }}</td>
+                            <td>{{ exam.grade }}</td>
+                            <td>{{ exam.name }}</td>
+                            <td>{{ exam.start_time }}</td>
+                            <td>{{ exam.end_time }}</td>
+                            <td>{{ 'Expired' if expired_status[exam.id] else 'Active' }}</td>
+                            <td>
+                                {% if expired_status[exam.id] %}
+                                    <a href="{{ url_for('delete_exam', exam_id=exam.id, token=delete_token) }}" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this exam?')">Delete</a>
+                                {% else %}
+                                    <span class="text-muted">N/A</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>No exams created.</p>
+        {% endif %}
+        <h3>Send Message to Parents</h3>
+        <form method="POST" action="{{ url_for('send_message') }}">
+            {{ message_form.hidden_tag() }}
+            <div class="mb-3">
+                {{ message_form.message(class="form-control", rows=4) }}
+                {% if message_form.message.errors %}
+                    {% for error in message_form.message.errors %}
+                        <span class="text-danger">{{ error }}</span>
+                    {% endfor %}
+                {% endif %}
+            </div>
+            {{ message_form.submit(class="btn btn-success") }}
+        </form>
+        <h3>Current Term Information</h3>
+        {% if term_info %}
+            <p>Term: {{ term_info.term }}</p>
+            <p>Start Date: {{ term_info.start_date }}</p>
+            <p>End Date: {{ term_info.end_date }}</p>
+            <p>Principal: {{ term_info.principal_name }}</p>
+        {% else %}
+            <p>No term information set.</p>
+        {% endif %}
+    </div>
+    <footer class="footer">
+        <p>© 2025 Jonyo Junior Secondary School. All rights reserved.<br>
+        Programmed by Mr. Obonga Rolex Oshia. Call: 0114745401 | Email: <a href="mailto:rolexoshia@gmail.com">rolexoshia@gmail.com</a></p>
+    </footer>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

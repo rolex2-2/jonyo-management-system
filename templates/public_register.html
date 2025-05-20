@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Public Registration - Jonyo Junior Secondary School{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="school-header">Jonyo Junior Secondary School</h1>
+    <div class="card mx-auto" style="max-width: 500px;">
+        <div class="card-header">
+            <h2 class="text-center">Public Registration</h2>
+        </div>
+        <div class="card-body">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'danger' if category == 'danger' else 'success' if category == 'success' else 'warning' }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            <form method="POST" action="{{ url_for('public_register') }}">
+                <div class="mb-3">
+                    <label for="role" class="form-label">Role</label>
+                    <select class="form-select" id="role" name="role" required>
+                        <option value="parent">Parent</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="username" class="form-label">Username</label>
+                    <input type="text" class="form-control" id="username" name="username" required>
+                </div>
+                <div class="mb-3">
+                    <label for="full_name" class="form-label">Full Name</label>
+                    <input type="text" class="form-control" id="full_name" name="full_name" required>
+                </div>
+                <div class="mb-3">
+                    <label for="password" class="form-label">Password</label>
+                    <input type="password" class="form-control" id="password" name="password" required>
+                </div>
+                <div class="mb-3">
+                    <label for="confirm_password" class="form-label">Confirm Password</label>
+                    <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+                </div>
+                <div class="mb-3">
+                    <label for="phone" class="form-label">Phone Number</label>
+                    <input type="text" class="form-control" id="phone" name="phone" placeholder="e.g., 0712345678">
+                </div>
+                <div class="mb-3" id="learner_admission_div">
+                    <label for="learner_admission" class="form-label">Learner Admission Number</label>
+                    <input type="text" class="form-control" id="learner_admission" name="learner_admission">
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Register</button>
+            </form>
+            <a href="{{ url_for('login') }}" class="btn btn-secondary w-100 mt-3">Back to Login</a>
+        </div>
+    </div>
+</div>
+<script>
+    document.getElementById('role').addEventListener('change', function() {
+        var role = this.value;
+        var learnerAdmissionDiv = document.getElementById('learner_admission_div');
+        var learnerAdmissionInput = document.getElementById('learner_admission');
+        if (role === 'parent') {
+            learnerAdmissionDiv.style.display = 'block';
+            learnerAdmissionInput.required = true;
+        } else {
+            learnerAdmissionDiv.style.display = 'none';
+            learnerAdmissionInput.required = false;
+        }
+    });
+    // Trigger change event on page load to set initial state
+    document.getElementById('role').dispatchEvent(new Event('change'));
+</script>
+{% endblock %}

@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Jonyo Junior Secondary School</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        body {
+            background-color: #f0f8ff;
+            font-family: Arial, sans-serif;
+        }
+        .navbar, .footer {
+            background-color: #343a40;
+            color: #ffffff;
+        }
+        .navbar-brand, .nav-link, .footer a {
+            color: #ffffff !important;
+        }
+        .dashboard-container {
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            max-width: 900px;
+        }
+        .footer {
+            text-align: center;
+            padding: 15px 0;
+            position: relative;
+            bottom: 0;
+            width: 100%;
+        }
+        .section-title {
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 5px;
+            margin-bottom: 15px;
+        }
+        .school-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .form-label {
+            font-weight: bold;
+        }
+        .alert-container {
+            position: relative;
+            z-index: 1000;
+            aria-live: "polite";
+        }
+        .alert {
+            animation: fadeOut 10s forwards;
+        }
+        @keyframes fadeOut {
+            0% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { opacity: 0; display: none; }
+        }
+        .form-select, .form-control {
+            max-width: 100%;
+            word-wrap: break-word;
+        }
+        .row {
+            margin-bottom: 15px;
+        }
+        .current-datetime {
+            text-align: center;
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('admin_dashboard') }}">Jonyo Junior Secondary School</a>
+            <div class="collapse navbar-collapse">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('logout') }}">Logout</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    <div class="container dashboard-container">
+        <h1 class="school-header">Jonyo Junior Secondary School</h1>
+        <h2 class="text-center">Admin Dashboard</h2>
+        <!-- Current Date and Time -->
+        <div class="current-datetime">
+            Current Date & Time: {{ current_date }} {{ current_time }}
+        </div>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="alert-container">
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'danger' if category == 'danger' else 'success' if category == 'success' else 'warning' }} alert-dismissible fade show" role="alert" aria-live="assertive">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+        
+        <!-- Debug CSRF Token (remove after testing) -->
+        <div class="mb-3" style="display: none;">
+            <p>CSRF Token Debug: {{ csrf_token() }}</p>
+        </div>
+
+        <h3 class="section-title">Management Actions</h3>
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <a href="{{ url_for('manage_users') }}" class="btn btn-primary w-100">Manage Users</a>
+            </div>
+            <div class="col-md-4 mb-3">
+                <a href="{{ url_for('manage_marks') }}" class="btn btn-primary w-100">Manage Marks</a>
+            </div>
+            <div class="col-md-4 mb-3">
+                <a href="{{ url_for('manage_fees') }}" class="btn btn-primary w-100">Manage Fees</a>
+            </div>
+            <div class="col-md-4 mb-3">
+                <a href="{{ url_for('upload_notes') }}" class="btn btn-primary w-100">Upload Notes</a>
+            </div>
+            <div class="col-md-4 mb-3">
+                <a href="{{ url_for('online_exam') }}" class="btn btn-primary w-100">Online Exams</a>
+            </div>
+            <div class="col-md-4 mb-3">
+                <a href="{{ url_for('timetable') }}" class="btn btn-primary w-100">Timetable</a>
+            </div>
+            <div class="col-md-4 mb-3">
+                <a href="{{ url_for('admin_notes') }}" class="btn btn-primary w-100">Admin Notes</a>
+            </div>
+            <div class="col-md-4 mb-3">
+                <a href="{{ url_for('edit_performance') }}" class="btn btn-primary w-100">Edit Performance Levels</a>
+            </div>
+            <div class="col-md-4 mb-3">
+                <a href="{{ url_for('edit_term') }}" class="btn btn-primary w-100">Edit Term Info</a>
+            </div>
+            <div class="col-md-4 mb-3">
+                <a href="{{ url_for('edit_home') }}" class="btn btn-primary w-100">Edit Home Page</a>
+            </div>
+            <div class="col-md-4 mb-3">
+                <a href="{{ url_for('assign_teachers') }}" class="btn btn-primary w-100">Assign Teachers</a>
+            </div>
+            <div class="col-md-4 mb-3">
+                <a href="{{ url_for('assign_class_teacher') }}" class="btn btn-primary w-100">Assign Class Teacher</a>
+            </div>
+            <div class="col-md-4 mb-3">
+                <a href="{{ url_for('manage_learning_areas') }}" class="btn btn-primary w-100">Manage Learning Areas</a>
+            </div>
+        </div>
+
+        <h3 class="section-title">View Class Exam Results</h3>
+        <form action="{{ url_for('view_class_exam_results') }}" method="POST" aria-label="View Class Exam Results Form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="grades" value="Grade 7,Grade 8,Grade 9">
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label for="exam_type_results" class="form-label">Exam Type</label>
+                    <select class="form-select" id="exam_type_results" name="exam_type" required aria-required="true">
+                        <option value="" disabled selected>Select Exam Type</option>
+                        <option value="Mid Term">Mid Term</option>
+                        <option value="End Term">End Term</option>
+                        <option value="CAT">CAT</option>
+                    </select>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="term_results" class="form-label">Term</label>
+                    <select class="form-select" id="term_results" name="term" required aria-required="true">
+                        <option value="" disabled selected>Select Term</option>
+                        <option value="Term 1">Term 1</option>
+                        <option value="Term 2">Term 2</option>
+                        <option value="Term 3">Term 3</option>
+                    </select>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="year_results" class="form-label">Year</label>
+                    <input type="number" class="form-control" id="year_results" name="year" value="{{ current_year }}" min="2020" max="2030" required aria-required="true">
+                </div>
+            </div>
+            <div class="mb-3">
+                <button type="submit" class="btn btn-primary">View Results for All Grades</button>
+            </div>
+        </form>
+
+        <h3 class="section-title">Send Message to Parents</h3>
+        <form action="{{ url_for('send_message') }}" method="POST" aria-label="Send Message to Parents Form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="mb-3">
+                <label for="message" class="form-label">Message</label>
+                <textarea class="form-control" id="message" name="message" rows="4" placeholder="Enter your message here..." required aria-required="true"></textarea>
+            </div>
+            <div class="mb-3">
+                <button type="submit" class="btn btn-success">Send Message</button>
+            </div>
+        </form>
+
+        <h3 class="section-title">Current Term Information</h3>
+        {% if term_info %}
+            <p><strong>Term:</strong> {{ term_info[0] }}</p>
+            <p><strong>Start Date:</strong> {{ term_info[1] }}</p>
+            <p><strong>End Date:</strong> {{ term_info[2] }}</p>
+            <p><strong>Principal:</strong> {{ term_info[3] }}</p>
+        {% else %}
+            <p>No term information set.</p>
+        {% endif %}
+
+        <h3 class="section-title">Download Results</h3>
+        <form action="{{ url_for('download_results') }}" method="POST" aria-label="Download Results Form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="grades" value="Grade 7,Grade 8,Grade 9">
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label for="exam_type_download" class="form-label">Exam Type</label>
+                    <select class="form-select" id="exam_type_download" name="exam_type" required aria-required="true">
+                        <option value="" disabled selected>Select Exam Type</option>
+                        <option value="Mid Term">Mid Term</option>
+                        <option value="End Term">End Term</option>
+                        <option value="CAT">CAT</option>
+                    </select>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="term_download" class="form-label">Term</label>
+                    <select class="form-select" id="term_download" name="term" required aria-required="true">
+                        <option value="" disabled selected>Select Term</option>
+                        <option value="Term 1">Term 1</option>
+                        <option value="Term 2">Term 2</option>
+                        <option value="Term 3">Term 3</option>
+                    </select>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="year_download" class="form-label">Year</label>
+                    <input type="number" class="form-control" id="year_download" name="year" value="{{ current_year }}" min="2020" max="2030" required aria-required="true">
+                </div>
+            </div>
+            <div class="mb-3">
+                <button type="submit" class="btn btn-primary">Download Results for All Grades (Excel)</button>
+            </div>
+        </form>
+
+        <h3 class="section-title">Download Report Cards</h3>
+        <form action="{{ url_for('download_report_cards') }}" method="POST" aria-label="Download Report Cards Form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="grades" value="Grade 7,Grade 8,Grade 9">
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label for="exam_type_cards" class="form-label">Exam Type</label>
+                    <select class="form-select" id="exam_type_cards" name="exam_type" required aria-required="true">
+                        <option value="" disabled selected>Select Exam Type</option>
+                        <option value="Mid Term">Mid Term</option>
+                        <option value="End Term">End Term</option>
+                        <option value="CAT">CAT</option>
+                    </select>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="term_cards" class="form-label">Term</label>
+                    <select class="form-select" id="term_cards" name="term" required aria-required="true">
+                        <option value="" disabled selected>Select Term</option>
+                        <option value="Term 1">Term 1</option>
+                        <option value="Term 2">Term 2</option>
+                        <option value="Term 3">Term 3</option>
+                    </select>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="year_cards" class="form-label">Year</label>
+                    <input type="number" class="form-control" id="year_cards" name="year" value="{{ current_year }}" min="2020" max="2030" required aria-required="true">
+                </div>
+            </div>
+            <div class="mb-3">
+                <button type="submit" class="btn btn-primary">Download Report Cards for All Grades (ZIP)</button>
+            </div>
+        </form>
+    </div>
+    <footer class="footer">
+        <p>© {{ current_year }} Jonyo Junior Secondary School. All rights reserved.<br>
+        Programmed by Mr. Obonga Rolex Oshia. Call: 0114745401 | Email: <a href="mailto:rolexoshia@gmail.com">rolexoshia@gmail.com</a></p>
+    </footer>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
