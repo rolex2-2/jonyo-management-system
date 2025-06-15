@@ -1952,403 +1952,273 @@ def manage_fees():
                           students=students,
                           current_year=datetime.now().year)
     
-
 @app.route('/upload_notes', methods=['GET', 'POST'])
 @login_required
+@role_required('admin', 'teacher')
 def upload_notes():
-    logging.debug(f"Entering upload_notes route: user_id={current_user.id}, role={session.get('role')}")
-    
-    # Check role
-    role = session.get('role')
-    if not role or role not in ['admin', 'teacher']:
-        flash('Unauthorized access. Please log in again.', 'danger')
-        logging.warning(f"Unauthorized access to upload_notes: user_id={session.get('user_id', 'unknown')}, role={role}")
-        return redirect(url_for('login'))
-    
-    # Initialize database connection
-    db_path = 'C:/Users/USER/Desktop/jonyo school/jonyo_school.db'
-    logging.debug(f"Connecting to database: {db_path}")
-    if not os.path.exists(db_path):
-        flash(f'Database file not found: {db_path}', 'danger')
-        logging.error(f"Database file not found: {db_path}")
-        return redirect(url_for('index'))
-    
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-    c = conn.cursor()
+    app.logger.debug(f"Entering upload_notes: user_id={current_user.id}, role={session.get('role')}")
     
     grades = ['Grade 7', 'Grade 8', 'Grade 9']
+    form = NoteForm()
     
-    try:
-        # Check if teacher_notes table exists
-        c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='teacher_notes'")
-        if not c.fetchone():
-            flash('Teacher_notes table does not exist in the database.', 'danger')
-            logging.error(f"Teacher_notes table missing in database: {db_path}")
-            conn.close()
-            return redirect(url_for('index'))
+    with get_db_connection() as conn:
+        c = conn.cursor()
         
-        # Fetch learning areas
-        learning_areas = []
-        if role == 'teacher':
+        # Populate learning areas
+        if session['role'] == 'teacher':
             c.execute("SELECT la.id, la.name, la.grade FROM learning_areas la JOIN teacher_assignments ta ON la.id=ta.learning_area_id WHERE ta.teacher_id=?", (current_user.id,))
-            learning_areas = c.fetchall()
-            if not learning_areas:
-                logging.warning(f"No teacher assignments for teacher_id={current_user.id}. Falling back to all learning areas.")
-                c.execute("SELECT id, name, grade FROM learning_areas")
-                learning_areas = c.fetchall()
         else:
             c.execute("SELECT id, name, grade FROM learning_areas")
-            learning_areas = c.fetchall()
+        learning_areas = c.fetchall()
+        form.learning_area.choices = [(str(la['id']), la['name']) for la in learning_areas if la['grade'] == form.grade.data]
         
-        logging.debug(f"Fetched {len(learning_areas)} learning areas: {[dict(area) for area in learning_areas]}")
-        
-        # Check if learning areas are available
-        if not learning_areas:
-            flash('No learning areas available. Please contact the admin to add learning areas.', 'warning')
-            logging.warning(f"No learning areas found for role={role}, user_id={current_user.id}")
-            conn.close()
-            return render_template('upload_notes.html',
-                                  grades=grades,
-                                  learning_areas=learning_areas,
-                                  notes=[],
-                                  role=role)
-        
-        # Fetch existing notes
-        if role == 'admin':
-            c.execute("SELECT n.id, n.grade, la.name, n.file_path, n.upload_date, u.full_name, n.downloads FROM teacher_notes n JOIN learning_areas la ON n.learning_area_id=la.id JOIN users u ON n.uploaded_by=u.id")
-        else:
-            c.execute("SELECT n.id, n.grade, la.name, n.file_path, n.upload_date, u.full_name, n.downloads FROM teacher_notes n JOIN learning_areas la ON n.learning_area_id=la.id JOIN users u ON n.uploaded_by=u.id WHERE n.uploaded_by=?",
-                      (current_user.id,))
+        # Fetch notes
+        query = "SELECT n.id, n.grade, la.name, n.file_path, n.upload_date, u.full_name, n.downloads FROM teacher_notes n JOIN learning_areas la ON n.learning_area_id=la.id JOIN users u ON n.uploaded_by=u.id"
+        params = ()
+        if session['role'] == 'teacher':
+            query += " WHERE n.uploaded_by=?"
+            params = (current_user.id,)
+        c.execute(query, params)
         notes = c.fetchall()
-        logging.debug(f"Fetched {len(notes)} notes")
         
-        if request.method == 'POST':
-            grade = request.form.get('grade')
-            learning_area_id = request.form.get('learning_area_id')
-            file = request.files.get('file')
+        if form.validate_on_submit():
+            try:
+                c.execute("SELECT id, grade FROM learning_areas WHERE id=?", (form.learning_area.data,))
+                la = c.fetchone()
+                if not la or la['grade'] != form.grade.data:
+                    flash('Invalid learning area for selected grade.', 'danger')
+                    return render_template('upload_notes.html', form=form, grades=grades, notes=notes)
+                
+                file = form.file.data
+                valid, error = validate_upload(file)
+                if not valid:
+                    flash(error, 'danger')
+                    return render_template('upload_notes.html', form=form, grades=grades, notes=notes)
+                
+                filename = f"{current_user.id}_{form.grade.data}_{form.learning_area.data}_{datetime.now().strftime('%Y%m%d%H%M%S')}.{file.filename.rsplit('.', 1)[1].lower()}"
+                file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                os.makedirs(os.path.dirname(file_path), exist_ok=True)
+                file.save(file_path)
+                
+                c.execute("INSERT INTO teacher_notes (grade, learning_area_id, file_path, upload_date, uploaded_by, downloads) VALUES (?, ?, ?, ?, ?, ?)",
+                          (form.grade.data, form.learning_area.data, file_path, datetime.now().strftime('%Y-%m-%d %H:%M:%S'), current_user.id, ''))
+                conn.commit()
+                flash('Notes uploaded successfully.', 'success')
+                app.logger.info(f"Notes uploaded: grade={form.grade.data}, learning_area_id={form.learning_area.data}, file={file_path}, by user={current_user.id}")
+                return redirect(url_for('upload_notes'))
             
-            logging.debug(f"Form data: grade={grade}, learning_area_id={learning_area_id}, file={file.filename if file else None}")
-            
-            # Detailed validation
-            if not grade:
-                flash('Please select a grade.', 'danger')
-                logging.error(f"Missing grade: grade={grade}")
-            elif not learning_area_id or not learning_area_id.isdigit():
-                flash('Please select a learning area.', 'danger')
-                logging.error(f"Invalid or missing learning_area_id: learning_area_id={learning_area_id}")
-            elif not file or not file.filename:
-                flash('Please upload a file.', 'danger')
-                logging.error(f"Missing file: file={file}")
-            elif not allowed_file(file.filename):
-                flash(f'Invalid file type: {file.filename}. Allowed: .pdf, .doc, .docx', 'danger')
-                logging.error(f"Invalid file type: filename={file.filename}")
-            elif grade not in grades:
-                flash(f'Invalid grade selected: {grade}', 'danger')
-                logging.error(f"Invalid grade: grade={grade}")
-            else:
-                try:
-                    # Verify learning area
-                    c.execute("SELECT id, grade FROM learning_areas WHERE id=?", (learning_area_id,))
-                    la = c.fetchone()
-                    if not la or la['grade'] != grade:
-                        flash('Invalid learning area for selected grade.', 'danger')
-                        logging.error(f"Invalid learning area: id={learning_area_id}, grade={grade}")
-                    else:
-                        # Save file
-                        filename = f"{current_user.id}_{grade}_{learning_area_id}_{datetime.now().strftime('%Y%m%d%H%M%S')}.{file.filename.rsplit('.', 1)[1].lower()}"
-                        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                        os.makedirs(os.path.dirname(file_path), exist_ok=True)
-                        file.save(file_path)
-                        
-                        # Insert note
-                        c.execute("INSERT INTO teacher_notes (grade, learning_area_id, file_path, upload_date, uploaded_by, downloads) VALUES (?, ?, ?, ?, ?, ?)",
-                                  (grade, learning_area_id, file_path, datetime.now().strftime('%Y-%m-%d %H:%M:%S'), current_user.id, ''))
-                        conn.commit()
-                        flash('Notes uploaded successfully.', 'success')
-                        logging.info(f"Notes uploaded: grade={grade}, learning_area_id={learning_area_id}, file={file_path}, by user={current_user.id}")
-                        return redirect(url_for('upload_notes'))
-                except sqlite3.Error as e:
-                    conn.rollback()
-                    flash(f'Database error uploading notes: {str(e)}.', 'danger')
-                    logging.error(f"Database error uploading notes: {str(e)}")
-                except OSError as e:
-                    flash(f'Error saving file: {str(e)}.', 'danger')
-                    logging.error(f"File save error: {str(e)}")
+            except (sqlite3.Error, OSError) as e:
+                conn.rollback()
+                flash(f'Error uploading notes: {str(e)}', 'danger')
+                app.logger.error(f"Error uploading notes: {str(e)}")
         
-        conn.close()
-        return render_template('upload_notes.html',
-                              grades=grades,
-                              learning_areas=learning_areas,
-                              notes=notes,
-                              role=role)
-    
-    except sqlite3.Error as e:
-        flash(f'Database connection error: {str(e)}.', 'danger')
-        logging.error(f"Database connection error in upload_notes: {str(e)}, db_path={db_path}")
-        if 'conn' in locals():
-            conn.close()
-        return redirect(url_for('index'))
+        return render_template('upload_notes.html', form=form, grades=grades, notes=notes)
     
 @app.route('/online_exam', methods=['GET', 'POST'])
 @login_required
+@role_required('admin', 'teacher', 'learner')
 def online_exam():
     form = ExamForm()
-    # Debug form fields
-    print("Form fields:", form._fields.keys())  # Print to terminal
-    logging.debug(f"Form fields: {form._fields.keys()}")
-    if 'exam_name' not in form._fields:
-        logging.error("ExamForm is missing 'exam_name' field")
-    
     grades = ['Grade 7', 'Grade 8', 'Grade 9']
     nairobi_tz = pytz.timezone('Africa/Nairobi')
-    
-    try:
-        with sqlite3.connect('C:/Users/USER/Desktop/jonyo school/jonyo_school.db') as conn:
-            conn.row_factory = sqlite3.Row
-            c = conn.cursor()
+    logging.debug(f"Accessing online_exam: user_id={current_user.id}, role={current_user.role}")
 
-            # Delete expired exams on page load (for admins/teachers)
-            if current_user.role in ['admin', 'teacher']:
-                deleted_count = delete_expired_exams_route()
-                if isinstance(deleted_count, int) and deleted_count > 0:
-                    flash(f'Deleted {deleted_count} expired exam(s).', 'info')
-                elif not isinstance(deleted_count, int):
-                    logging.error(f"delete_expired_exams_route returned unexpected type: {type(deleted_count)}")
-                    flash('Error processing expired exams.', 'danger')
+    with get_db_connection() as conn:
+        c = conn.cursor()
 
-            # Fetch learning areas
+        # Delete expired exams for admins/teachers
+        if current_user.role in ['admin', 'teacher']:
             try:
-                if current_user.role == 'teacher':
-                    c.execute("SELECT learning_area_id FROM teacher_assignments WHERE teacher_id=?", (current_user.id,))
-                    area_ids = [row['learning_area_id'] for row in c.fetchall()]
-                    if area_ids:
-                        c.execute("SELECT id, name FROM learning_areas WHERE id IN ({})".format(','.join('?'*len(area_ids))), area_ids)
-                    else:
-                        c.execute("SELECT id, name FROM learning_areas")
+                deleted_count = delete_expired_exams()
+                if deleted_count > 0:
+                    flash(f'Deleted {deleted_count} expired exam(s).', 'info')
+            except Exception as e:
+                logging.error(f"Failed to delete expired exams: {str(e)}")
+                flash('Error processing expired exams.', 'danger')
+
+        # Fetch learning areas
+        try:
+            if current_user.role == 'teacher':
+                c.execute("SELECT learning_area_id FROM teacher_assignments WHERE teacher_id=?", (current_user.id,))
+                area_ids = [row['learning_area_id'] for row in c.fetchall()]
+                if area_ids:
+                    c.execute(f"SELECT id, name FROM learning_areas WHERE id IN ({','.join(['?']*len(area_ids))})", area_ids)
                 else:
                     c.execute("SELECT id, name FROM learning_areas")
-                learning_areas = c.fetchall()
-                form.learning_area.choices = [(str(area['id']), area['name']) for area in learning_areas]
-                if not learning_areas:
-                    flash('No learning areas available. Please contact the admin.', 'warning')
-                    logging.warning(f"No learning areas found for role={current_user.role}, user_id={current_user.id}")
-            except Exception as e:
-                flash(f'Database error fetching learning areas: {str(e)}', 'danger')
-                logging.error(f"Error fetching learning areas: {str(e)}, user_id={current_user.id}")
-                learning_areas = []
+            else:
+                c.execute("SELECT id, name FROM learning_areas")
+            learning_areas = c.fetchall()
+            form.learning_area.choices = [(str(area['id']), area['name']) for area in learning_areas]
+            if not learning_areas:
+                flash('No learning areas available.', 'warning')
+        except Exception as e:
+            flash('Error fetching learning areas.', 'danger')
+            logging.error(f"Error fetching learning areas: {str(e)}")
+            learning_areas = []
 
-            # Handle exam selection for learners (GET with exam_id)
-            exam_id = request.args.get('exam_id')
-            questions = None
-            exam_name = None
-            exam_grade = None
-            if current_user.role == 'learner' and exam_id:
-                try:
-                    c.execute("SELECT grade FROM learners WHERE admission_no=?", (current_user.username,))
-                    learner_grade = c.fetchone()
-                    if not learner_grade:
-                        flash('Learner profile not found', 'danger')
-                        logging.error(f"Learner profile not found: admission_no={current_user.username}")
-                        return redirect(url_for('learner_dashboard'))
-                    learner_grade = learner_grade['grade']
-                    c.execute("SELECT id, learning_area_id, start_time, end_time, exam_name FROM exams WHERE id=? AND grade=? AND is_active=1", (exam_id, learner_grade))
-                    exam = c.fetchone()
-                    if exam:
-                        now = datetime.now(nairobi_tz)
-                        start = nairobi_tz.localize(datetime.strptime(exam['start_time'], '%Y-%m-%d %H:%M:%S')) if exam['start_time'] else now
-                        end = nairobi_tz.localize(datetime.strptime(exam['end_time'], '%Y-%m-%d %H:%M:%S')) if exam['end_time'] else now
-                        if start <= now <= end:
-                            c.execute("SELECT id, question_text FROM exam_questions WHERE exam_id=?", (exam['id'],))
-                            questions = c.fetchall()
-                            c.execute("SELECT name FROM learning_areas WHERE id=?", (exam['learning_area_id'],))
-                            area_name = c.fetchone()['name']
-                            exam_name = exam['exam_name'] or f"{area_name} Exam"
-                            exam_grade = learner_grade
-                            logging.info(f"Exam accessed: id={exam_id}, learner={current_user.username}, grade={learner_grade}")
-                        else:
-                            flash(f'Exam is not available. Available from {exam["start_time"]} to {exam["end_time"]}', 'danger')
+        # Handle learner exam selection
+        exam_id = request.args.get('exam_id')
+        questions = None
+        exam_details = None
+        if current_user.role == 'learner' and exam_id:
+            try:
+                c.execute("SELECT grade FROM learners WHERE admission_no=?", (current_user.username,))
+                learner_grade = c.fetchone()['grade']
+                c.execute("SELECT id, learning_area_id, start_time, end_time, exam_name FROM exams WHERE id=? AND grade=? AND is_active=1", (exam_id, learner_grade))
+                exam = c.fetchone()
+                if exam:
+                    now = datetime.now(nairobi_tz)
+                    start = nairobi_tz.localize(datetime.strptime(exam['start_time'], '%Y-%m-%d %H:%M:%S'))
+                    end = nairobi_tz.localize(datetime.strptime(exam['end_time'], '%Y-%m-%d %H:%M:%S'))
+                    if start <= now <= end:
+                        c.execute("SELECT id, question_text FROM exam_questions WHERE exam_id=?", (exam['id'],))
+                        questions = c.fetchall()
+                        c.execute("SELECT name FROM learning_areas WHERE id=?", (exam['learning_area_id'],))
+                        exam_details = {
+                            'name': exam['exam_name'] or f"{c.fetchone()['name']} Exam",
+                            'grade': learner_grade
+                        }
                     else:
-                        flash('Exam not found or not available for your grade', 'danger')
-                except (ValueError, Exception) as e:
-                    flash(f'Error loading exam: {str(e)}', 'danger')
-                    logging.error(f"Error loading exam {exam_id}: {str(e)}, user_id={current_user.id}")
+                        flash(f'Exam unavailable. Available from {start} to {end}.', 'danger')
+                else:
+                    flash('Exam not found or unavailable for your grade.', 'danger')
+            except Exception as e:
+                flash('Error loading exam.', 'danger')
+                logging.error(f"Error loading exam {exam_id}: {str(e)}")
+                return redirect(url_for('learner_dashboard'))
+
+        if request.method == 'POST':
+            if current_user.role in ['admin', 'teacher']:
+                if form.validate_on_submit():
+                    try:
+                        if form.is_online.data == '1' and not any([form.question_1.data, form.question_2.data, form.question_3.data, form.question_4.data, form.question_5.data]):
+                            flash('At least one question required for online exams.', 'danger')
+                            return render_template('online_exam.html', **locals())
+                        file_path = None
+                        if form.file.data and allowed_file(form.file.data.filename):
+                            filename = secure_filename(form.file.data.filename)
+                            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+                            form.file.data.save(file_path)
+                        c.execute("SELECT name FROM learning_areas WHERE id=?", (form.learning_area.data,))
+                        area_name = c.fetchone()['name']
+                        exam_name = form.exam_name.data or f"{area_name} Exam {form.grade.data}"
+                        start_time = datetime.strptime(form.start_time.data, '%Y-%m-%d %H:%M:%S')
+                        end_time = datetime.strptime(form.end_time.data, '%Y-%m-%d %H:%M:%S')
+                        c.execute('''INSERT INTO exams (uploaded_by, grade, learning_area_id, file_path, start_time, end_time, is_online, exam_name, is_active)
+                                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                                  (current_user.id, form.grade.data, form.learning_area.data, file_path,
+                                   start_time.strftime('%Y-%m-%d %H:%M:%S'), end_time.strftime('%Y-%m-%d %H:%M:%S'),
+                                   int(form.is_online.data), exam_name, 1))
+                        exam_id = c.lastrowid
+                        for q in [form.question_1.data, form.question_2.data, form.question_3.data, form.question_4.data, form.question_5.data]:
+                            if q and q.strip():
+                                c.execute("INSERT INTO exam_questions (exam_id, question_text) VALUES (?, ?)", (exam_id, q.strip()))
+                        conn.commit()
+                        flash('Exam created successfully.', 'success')
+                        return redirect(url_for('online_exam'))
+                    except Exception as e:
+                        conn.rollback()
+                        flash('Error creating exam.', 'danger')
+                        logging.error(f"Error creating exam: {str(e)}")
+                else:
+                    flash('Form validation failed.', 'danger')
+                    logging.debug(f"Form errors: {form.errors}")
+            elif current_user.role == 'learner':
+                exam_id = request.form.get('exam_id')
+                try:
+                    c.execute("SELECT start_time, end_time, is_active FROM exams WHERE id=?", (exam_id,))
+                    exam = c.fetchone()
+                    if not exam or not exam['is_active']:
+                        flash('Exam not found or inactive.', 'danger')
+                        return redirect(url_for('learner_dashboard'))
+                    now = datetime.now(nairobi_tz)
+                    start = nairobi_tz.localize(datetime.strptime(exam['start_time'], '%Y-%m-%d %H:%M:%S'))
+                    end = nairobi_tz.localize(datetime.strptime(exam['end_time'], '%Y-%m-%d %H:%M:%S'))
+                    if start <= now <= end:
+                        c.execute("SELECT COUNT(*) FROM exam_answers WHERE exam_id=? AND learner_admission=?", (exam_id, current_user.username))
+                        if c.fetchone()['COUNT(*)'] > 0:
+                            flash('Exam already submitted.', 'warning')
+                            return redirect(url_for('learner_dashboard'))
+                        for i in range(1, 6):
+                            answer = request.form.get(f'answer_{i}')
+                            question_id = request.form.get(f'question_id_{i}')
+                            if answer and question_id:
+                                c.execute('''INSERT INTO exam_answers (exam_id, learner_admission, question_id, answer_text, submitted_at)
+                                             VALUES (?, ?, ?, ?, ?)''',
+                                          (exam_id, current_user.username, question_id, answer, now.strftime('%Y-%m-%d %H:%M:%S')))
+                        conn.commit()
+                        flash('Exam submitted successfully.', 'success')
+                    else:
+                        flash(f'Exam unavailable. Available from {start} to {end}.', 'danger')
+                    return redirect(url_for('learner_dashboard'))
+                except Exception as e:
+                    conn.rollback()
+                    flash('Error submitting exam.', 'danger')
+                    logging.error(f"Error submitting exam {exam_id}: {str(e)}")
                     return redirect(url_for('learner_dashboard'))
 
-            if request.method == 'POST':
-                if current_user.role in ['admin', 'teacher']:
-                    logging.debug(f"POST Form fields: {form._fields.keys()}")
-                    if form.validate_on_submit():
-                        try:
-                            if form.is_online.data == '1' and not any([form.question_1.data, form.question_2.data, form.question_3.data, form.question_4.data, form.question_5.data]):
-                                flash('At least one question is required for online exams', 'danger')
-                                return redirect(url_for('online_exam'))
-                            file_path = None
-                            if form.file.data and allowed_file(form.file.data.filename):
-                                filename = secure_filename(form.file.data.filename)
-                                file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                                os.makedirs(os.path.dirname(file_path), exist_ok=True)
-                                form.file.data.save(file_path)
-                            c.execute("SELECT name FROM learning_areas WHERE id=?", (form.learning_area.data,))
-                            area_name = c.fetchone()['name']
-                            exam_name = form.exam_name.data or f"{area_name} Exam {form.grade.data}"
-                            start_time = datetime.strptime(form.start_time.data, '%Y-%m-%d %H:%M:%S')
-                            end_time = datetime.strptime(form.end_time.data, '%Y-%m-%d %H:%M:%S')
-                            c.execute('''INSERT INTO exams (uploaded_by, grade, learning_area_id, file_path, start_time, end_time, is_online, exam_name, is_active)
-                                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-                                      (current_user.id, form.grade.data, form.learning_area.data, file_path,
-                                       start_time.strftime('%Y-%m-%d %H:%M:%S'), 
-                                       end_time.strftime('%Y-%m-%d %H:%M:%S'), 
-                                       int(form.is_online.data), exam_name, 1))
-                            exam_id = c.lastrowid
-                            questions = [form.question_1.data, form.question_2.data, form.question_3.data, form.question_4.data, form.question_5.data]
-                            for q in questions:
-                                if q and q.strip():
-                                    c.execute("INSERT INTO exam_questions (exam_id, question_text) VALUES (?, ?)", (exam_id, q.strip()))
-                            conn.commit()
-                            flash('Online exam created successfully', 'success')
-                            logging.info(f"Exam created: id={exam_id}, by user_id={current_user.id}, grade={form.grade.data}, learning_area={area_name}")
-                            return redirect(url_for('online_exam'))
-                        except ValueError as e:
-                            conn.rollback()
-                            flash(f'Invalid date format: {str(e)}', 'danger')
-                            logging.error(f"Invalid date format in exam creation: {str(e)}, input_start={form.start_time.data}, input_end={form.end_time.data}, user_id={current_user.id}")
-                            return redirect(url_for('online_exam'))
-                        except Exception as e:
-                            conn.rollback()
-                            flash(f'Error creating exam: {str(e)}', 'danger')
-                            logging.error(f"Error creating exam: {str(e)}, user_id={current_user.id}")
-                            return redirect(url_for('online_exam'))
-                    else:
-                        logging.debug(f"Form validation failed: {form.errors}")
-                        flash('Form validation failed. Please check all required fields.', 'danger')
-                elif current_user.role == 'learner':
-                    exam_id = request.form.get('exam_id')
-                    try:
-                        c.execute("SELECT start_time, end_time, is_active FROM exams WHERE id=?", (exam_id,))
-                        exam = c.fetchone()
-                        if not exam or exam['is_active'] != 1:
-                            flash('Exam not found or inactive', 'danger')
-                            return redirect(url_for('learner_dashboard'))
-                        now = datetime.now(nairobi_tz)
-                        start = nairobi_tz.localize(datetime.strptime(exam['start_time'], '%Y-%m-%d %H:%M:%S')) if exam['start_time'] else now
-                        end = nairobi_tz.localize(datetime.strptime(exam['end_time'], '%Y-%m-%d %H:%M:%S')) if exam['end_time'] else now
-                        if start <= now <= end:
-                            c.execute("SELECT COUNT(*) FROM exam_answers WHERE exam_id=? AND learner_admission=?", (exam_id, current_user.username))
-                            if c.fetchone()['COUNT(*)'] > 0:
-                                flash('You have already submitted this exam', 'warning')
-                                return redirect(url_for('learner_dashboard'))
-                            for i in range(1, 6):
-                                answer = request.form.get(f'answer_{i}')
-                                question_id = request.form.get(f'question_id_{i}')
-                                if answer and question_id:
-                                    c.execute('''INSERT INTO exam_answers (exam_id, learner_admission, question_id, answer_text, submitted_at)
-                                                 VALUES (?, ?, ?, ?, ?)''',
-                                              (exam_id, current_user.username, question_id, answer, now.strftime('%Y-%m-%d %H:%M:%S')))
-                            conn.commit()
-                            flash('Exam submitted successfully', 'success')
-                            logging.info(f"Exam submitted: id={exam_id}, by learner={current_user.username}")
-                        else:
-                            flash(f'Exam is not available. Available from {exam["start_time"]} to {exam["end_time"]}', 'danger')
-                        return redirect(url_for('learner_dashboard'))
-                    except (ValueError, Exception) as e:
-                        conn.rollback()
-                        flash(f'Error submitting exam: {str(e)}', 'danger')
-                        logging.error(f"Error submitting exam {exam_id}: {str(e)}, user_id={current_user.id}")
-                        return redirect(url_for('learner_dashboard'))
+        # Fetch exams
+        exams = []
+        submission_status = {}
+        expired_status = {}
+        try:
+            if current_user.role == 'learner' and not questions:
+                c.execute("SELECT grade FROM learners WHERE admission_no=?", (current_user.username,))
+                learner_grade = c.fetchone()['grade']
+                c.execute("SELECT e.id, e.grade, e.learning_area_id, e.start_time, e.end_time, e.exam_name, l.name FROM exams e JOIN learning_areas l ON e.learning_area_id=l.id WHERE e.grade=? AND e.is_active=1", (learner_grade,))
+                exams = c.fetchall()
+                now = datetime.now(nairobi_tz)
+                for exam in exams:
+                    c.execute("SELECT COUNT(*) FROM exam_answers WHERE exam_id=? AND learner_admission=?", (exam['id'], current_user.username))
+                    submission_status[exam['id']] = c.fetchone()['COUNT(*)'] > 0
+                    end_time = nairobi_tz.localize(datetime.strptime(exam['end_time'], '%Y-%m-%d %H:%M:%S'))
+                    expired_status[exam['id']] = end_time < now
+            elif current_user.role in ['admin', 'teacher']:
+                query = "SELECT e.id, e.grade, e.learning_area_id, e.start_time, e.end_time, e.exam_name, l.name FROM exams e JOIN learning_areas l ON e.learning_area_id=l.id JOIN users u ON e.uploaded_by=u.id"
+                params = []
+                if current_user.role == 'teacher':
+                    query += " WHERE e.uploaded_by=?"
+                    params = [current_user.id]
+                c.execute(query, params)
+                exams = c.fetchall()
+                now = datetime.now(nairobi_tz)
+                for exam in exams:
+                    end_time = nairobi_tz.localize(datetime.strptime(exam['end_time'], '%Y-%m-%d %H:%M:%S'))
+                    expired_status[exam['id']] = end_time < now
+        except Exception as e:
+            flash('Error fetching exams.', 'danger')
+            logging.error(f"Error fetching exams: {str(e)}")
 
-            # Fetch exams with submission status
-            exams = []
-            submission_status = {}
-            expired_status = {}
+        # Fetch exam takers
+        exam_takers = []
+        if current_user.role in ['admin', 'teacher']:
             try:
-                if current_user.role == 'learner' and not questions:
-                    c.execute("SELECT grade FROM learners WHERE admission_no=?", (current_user.username,))
-                    learner_grade = c.fetchone()
-                    if learner_grade:
-                        c.execute("""
-                            SELECT e.id, e.grade, e.learning_area_id, e.start_time, e.end_time, e.exam_name, l.name 
-                            FROM exams e 
-                            JOIN learning_areas l ON e.learning_area_id=l.id 
-                            WHERE e.grade=? AND e.is_active=1
-                        """, (learner_grade['grade'],))
-                        exams = c.fetchall()
-                        logging.info(f"Fetched {len(exams)} exams for learner {current_user.username}, grade={learner_grade['grade']}")
-                        now = datetime.now(nairobi_tz)
-                        for exam in exams:
-                            c.execute("SELECT COUNT(*) FROM exam_answers WHERE exam_id=? AND learner_admission=?", (exam['id'], current_user.username))
-                            submission_status[exam['id']] = c.fetchone()['COUNT(*)'] > 0
-                            end_time = nairobi_tz.localize(datetime.strptime(exam['end_time'], '%Y-%m-%d %H:%M:%S'))
-                            expired_status[exam['id']] = end_time < now
-                elif current_user.role in ['admin', 'teacher']:
-                    if current_user.role == 'admin':
-                        c.execute("""
-                            SELECT e.id, e.grade, e.learning_area_id, e.start_time, e.end_time, e.exam_name, l.name 
-                            FROM exams e 
-                            JOIN learning_areas l ON e.learning_area_id=l.id 
-                            JOIN users u ON e.uploaded_by=u.id
-                        """)
-                    else:
-                        c.execute("""
-                            SELECT e.id, e.grade, e.learning_area_id, e.start_time, e.end_time, e.exam_name, l.name 
-                            FROM exams e 
-                            JOIN learning_areas l ON e.learning_area_id=l.id 
-                            JOIN users u ON e.uploaded_by=u.id 
-                            WHERE e.uploaded_by=?
-                        """, (current_user.id,))
-                    exams = c.fetchall()
-                    now = datetime.now(nairobi_tz)
-                    for exam in exams:
-                        end_time = nairobi_tz.localize(datetime.strptime(exam['end_time'], '%Y-%m-%d %H:%M:%S'))
-                        expired_status[exam['id']] = end_time < now
+                query = "SELECT ea.exam_id, ea.learner_admission, ea.question_id, ea.answer_text, ea.submitted_at, l.full_name FROM exam_answers ea JOIN learners l ON ea.learner_admission=l.admission_no JOIN exams e ON ea.exam_id=e.id"
+                params = []
+                if current_user.role == 'teacher':
+                    query += " WHERE e.uploaded_by=?"
+                    params = [current_user.id]
+                c.execute(query, params)
+                exam_takers = c.fetchall()
             except Exception as e:
-                flash(f'Database error fetching exams: {str(e)}', 'danger')
-                logging.error(f"Error fetching exams: {str(e)}, user_id={current_user.id}")
-                exams = []
+                flash('Error fetching exam takers.', 'danger')
+                logging.error(f"Error fetching exam takers: {str(e)}")
 
-            # Fetch exam takers for admins/teachers
-            exam_takers = []
-            if current_user.role in ['admin', 'teacher']:
-                try:
-                    if current_user.role == 'teacher':
-                        c.execute("""
-                            SELECT ea.exam_id, ea.learner_admission, ea.question_id, ea.answer_text, ea.submitted_at, l.full_name 
-                            FROM exam_answers ea 
-                            JOIN learners l ON ea.learner_admission=l.admission_no 
-                            JOIN exams e ON ea.exam_id=e.id 
-                            WHERE e.uploaded_by=?
-                        """, (current_user.id,))
-                    else:
-                        c.execute("""
-                            SELECT ea.exam_id, ea.learner_admission, ea.question_id, ea.answer_text, ea.submitted_at, l.full_name 
-                            FROM exam_answers ea 
-                            JOIN learners l ON ea.learner_admission=l.admission_no
-                        """)
-                    exam_takers = c.fetchall()
-                except Exception as e:
-                    flash(f'Database error fetching exam takers: {str(e)}', 'danger')
-                    logging.error(f"Error fetching exam takers: {str(e)}, user_id={current_user.id}")
-                    exam_takers = []
-
-            return render_template('online_exam.html',
-                                 form=form,
-                                 grades=grades,
-                                 learning_areas=learning_areas,
-                                 exams=exams,
-                                 exam_takers=exam_takers,
-                                 role=current_user.role,
-                                 questions=questions,
-                                 exam_id=exam_id,
-                                 exam_name=exam_name,
-                                 exam_grade=exam_grade,
-                                 submission_status=submission_status,
-                                 expired_status=expired_status,
-                                 current_year=datetime.now().year)
-
-    except sqlite3.Error as e:
-        flash(f'Database error: {str(e)}', 'danger')
-        logging.error(f"Database error in online_exam: {str(e)}, user_id={current_user.id}")
-        return redirect(url_for('learner_dashboard' if current_user.role == 'learner' else 'admin_dashboard' if current_user.role == 'admin' else 'teacher_dashboard'))
+        return render_template('online_exam.html',
+                               form=form,
+                               grades=grades,
+                               learning_areas=learning_areas,
+                               exams=exams,
+                               exam_takers=exam_takers,
+                               role=current_user.role,
+                               questions=questions,
+                               exam_id=exam_id,
+                               exam_name=exam_details['name'] if exam_details else None,
+                               exam_grade=exam_details['grade'] if exam_details else None,
+                               submission_status=submission_status,
+                               expired_status=expired_status,
+                               current_year=datetime.now().year)
 @app.route('/delete_exam/<int:exam_id>', methods=['GET'])
 @login_required
 def delete_exam(exam_id):
